@@ -1,0 +1,36 @@
+# Цены материалов и коэффициенты розницы для плоттера Roland VP-540
+
+[roll]
+default_width_mm = 1370.0
+margin_mm = 10.0
+default_gap_mm = 3.0
+
+[a4]
+width_mm = 210.0
+height_mm = 297.0
+usable_width_mm = 200.0
+usable_height_mm = 287.0
+area_m2 = 0.06237
+
+[costs.zenon]
+# Цены по накладной ООО «ЗЕНОН-СПБ»:
+# Рулон 1.37 × 50 м: 103 ₽ / пог. м -> 75.18 ₽ / м²
+material_rub_per_m2 = 75.18
+# Чернила STARINK HQ (4006 ₽/л) + промывка (2181 ₽/л) -> 54.82 ₽ / м²
+ink_rub_per_m2 = 54.82
+total_rub_per_m2 = 130.0
+min_cost_rub = 5
+min_a4_sheet_cost_rub = 8
+
+[retail]
+min_base_unit_rub = 15.0
+cm2_rate = 0.38
+min_retail_rub = 100
+min_a4_retail_rub = 250
+a4_discount = 0.85
+
+[retail.discounts]
+qty_10 = 0.90
+qty_25 = 0.80
+qty_50 = 0.70
+qty_100 = 0.60

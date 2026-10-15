@@ -123,3 +123,20 @@ def test_item_larger_than_a4_should_be_zero() -> None:
     """Ожидаемое поведение: если изделие физически не помещается на лист А4, вместимость должна быть 0."""
     res = calculate_nesting_and_price(250.0, 350.0, qty=1)
     assert res["a4_fit_qty"] == 0
+
+
+def test_pricing_module_import_and_config() -> None:
+    """Проверка загрузки конфигурации из pricing.toml через модуль pricing."""
+    import pricing
+
+    cfg = pricing.load_pricing_config()
+    assert "roll" in cfg
+    assert "costs" in cfg
+    assert "retail" in cfg
+    assert cfg["roll"]["default_width_mm"] == 1370.0
+    assert cfg["costs"]["zenon"]["material_rub_per_m2"] == 75.18
+
+    # Проверка вызова напрямую из pricing
+    res = pricing.calculate_nesting_and_price(50.0, 50.0, qty=1)
+    assert res["cost_rub"] == 5
+    assert res["retail_rub"] == 100

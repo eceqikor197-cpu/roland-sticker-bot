@@ -1,0 +1,11 @@
+{
+  "id": "macbook_air_15",
+  "title": "MacBook Air 15\" (M2/M3)",
+  "width_mm": 340.4,
+  "height_mm": 237.6,
+  "corner_radius_mm": 9.0,
+  "mask_svg_path_mm": "M 9.0 0 H 331.4 A 9.0 9.0 0 0 1 340.4 9.0 V 228.6 A 9.0 9.0 0 0 1 331.4 237.6 H 9.0 A 9.0 9.0 0 0 1 0 228.6 V 9.0 A 9.0 9.0 0 0 1 9.0 0 Z",
+  "safe_margin_mm": 4.0,
+  "notes": "Габариты по официальным Apple Tech Specs (340.4 × 237.6 мм). Требуется контрольный замер линейкой перед отправкой на плоттер.",
+  "verified": false
+}

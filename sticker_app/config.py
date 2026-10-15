@@ -37,6 +37,10 @@ CACHE_DIR = Path(
     os.getenv("CACHE_DIR", BASE_DIR / "bot_workspace" / "cache")
 ).resolve()
 
+OBJECTS_DIR = Path(
+    os.getenv("OBJECTS_DIR", BASE_DIR / "objects")
+).resolve()
+
 # Фильтр лицензий: по умолчанию off (разрешает все макеты без takedown)
 # 'on' включает ограничение: только макеты с license IN ('own', 'licensed', 'cc0')
 LICENSE_FILTER: bool = os.getenv("LICENSE_FILTER", "off").strip().lower() in (

@@ -1,0 +1,11 @@
+{
+  "id": "macbook_pro_14",
+  "title": "MacBook Pro 14\" (M1/M2/M3/M4)",
+  "width_mm": 312.6,
+  "height_mm": 221.2,
+  "corner_radius_mm": 8.0,
+  "mask_svg_path_mm": "M 8.0 0 H 304.6 A 8.0 8.0 0 0 1 312.6 8.0 V 213.2 A 8.0 8.0 0 0 1 304.6 221.2 H 8.0 A 8.0 8.0 0 0 1 0 213.2 V 8.0 A 8.0 8.0 0 0 1 8.0 0 Z",
+  "safe_margin_mm": 4.0,
+  "notes": "Габариты по официальным Apple Tech Specs (312.6 × 221.2 мм). Требуется контрольный замер линейкой перед отправкой на плоттер.",
+  "verified": false
+}

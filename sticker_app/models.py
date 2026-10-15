@@ -5,7 +5,7 @@ Pydantic-модели для API каталога веб-сервиса стик
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -147,4 +147,50 @@ class RecommendResponse(BaseModel):
     items: List[RecommendedSticker] = Field(default_factory=list, description="Список рекомендованных стикеров")
     total: int = Field(..., description="Количество возвращенных рекомендаций")
     is_cold_start: bool = Field(False, description="Флаг режима холодного старта")
+
+
+class ObjectItem(BaseModel):
+    """Описание геометрии объекта оклейки."""
+
+    id: str = Field(..., description="Уникальный идентификатор объекта")
+    title: str = Field(..., description="Человекочитаемое название объекта")
+    width_mm: float = Field(..., gt=0, description="Физическая ширина в миллиметрах")
+    height_mm: float = Field(..., gt=0, description="Физическая высота в миллиметрах")
+    corner_radius_mm: float = Field(..., ge=0, description="Радиус скругления углов в миллиметрах")
+    mask_svg_path_mm: str = Field(..., description="SVG path маски контура в миллиметрах")
+    safe_margin_mm: float = Field(..., ge=0, description="Безопасный отступ от края в миллиметрах")
+    notes: Optional[str] = Field(None, description="Примечания и статус замера")
+    verified: bool = Field(False, description="Подтверждены ли размеры физическим замером")
+
+
+class ObjectsListResponse(BaseModel):
+    """Список поддерживаемых объектов оклейки."""
+
+    items: List[ObjectItem] = Field(default_factory=list, description="Список объектов")
+    total: int = Field(..., description="Общее количество объектов")
+
+
+class DesignPlacement(BaseModel):
+    """Параметры размещения одного стикера на объекте."""
+
+    asset_id: str = Field(..., min_length=1, description="Идентификатор макета стикера")
+    x_mm: float = Field(..., description="Положение геометрического центра по X в миллиметрах")
+    y_mm: float = Field(..., description="Положение геометрического центра по Y в миллиметрах")
+    width_mm: float = Field(..., ge=15.0, le=150.0, description="Ширина стикера в мм (от 15 до 150 мм)")
+    rotation_deg: float = Field(0.0, ge=-360.0, le=360.0, description="Угол поворота по часовой стрелке в градусах")
+    z: int = Field(0, ge=0, description="Порядковый номер слоя (z-index)")
+    locked: bool = Field(False, description="Флаг блокировки от изменений")
+
+
+class DesignData(BaseModel):
+    """Полная структура сохранённой композиции/дизайна."""
+
+    schema_version: str = Field("1.0", description="Версия схемы дизайна")
+    object_id: str = Field(..., min_length=1, description="Идентификатор целевого объекта оклейки")
+    placements: List[DesignPlacement] = Field(
+        default_factory=list,
+        max_length=150,
+        description="Список размещений стикеров (до 150 шт.)",
+    )
+    created_at: Optional[Union[float, str]] = Field(None, description="Время создания (timestamp или ISO)")
 

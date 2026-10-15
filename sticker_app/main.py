@@ -24,6 +24,8 @@ from sticker_app.image_service import get_or_generate_image
 from sticker_app.models import (
     CategoryTree,
     HealthResponse,
+    ObjectItem,
+    ObjectsListResponse,
     RecommendRequest,
     RecommendResponse,
     RecommendedSticker,
@@ -34,6 +36,7 @@ from sticker_app.models import (
     TasteProfileRequest,
     TasteProfileResponse,
 )
+from sticker_app.objects import get_object, list_objects
 from sticker_app.recommender import get_recommender_engine
 
 logger = logging.getLogger("sticker_app")
@@ -248,5 +251,34 @@ def get_recommendations(body: RecommendRequest) -> RecommendResponse:
         total=len(recommended),
         is_cold_start=is_cold_start,
     )
+
+
+@app.get(
+    f"{config.API_PREFIX}/objects",
+    response_model=ObjectsListResponse,
+    summary="Список поддерживаемых объектов оклейки",
+    tags=["Objects"],
+)
+def api_list_objects() -> ObjectsListResponse:
+    """Возвращает список всех доступных объектов оклейки (моделей ноутбуков)."""
+    items = list_objects()
+    return ObjectsListResponse(items=items, total=len(items))
+
+
+@app.get(
+    f"{config.API_PREFIX}/objects/{{object_id}}",
+    response_model=ObjectItem,
+    summary="Геометрия объекта оклейки по идентификатору",
+    tags=["Objects"],
+)
+def api_get_object(object_id: str) -> ObjectItem:
+    """Возвращает геометрию, размеры и SVG-маску конкретного объекта."""
+    obj = get_object(object_id)
+    if obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Объект с ID '{object_id}' не найден",
+        )
+    return obj
 
 

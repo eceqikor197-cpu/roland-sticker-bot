@@ -1,0 +1,11 @@
+{
+  "id": "macbook_air_13",
+  "title": "MacBook Air 13\" (M2/M3)",
+  "width_mm": 304.1,
+  "height_mm": 214.9,
+  "corner_radius_mm": 8.0,
+  "mask_svg_path_mm": "M 8.0 0 H 296.1 A 8.0 8.0 0 0 1 304.1 8.0 V 206.9 A 8.0 8.0 0 0 1 296.1 214.9 H 8.0 A 8.0 8.0 0 0 1 0 206.9 V 8.0 A 8.0 8.0 0 0 1 8.0 0 Z",
+  "safe_margin_mm": 4.0,
+  "notes": "Габариты по официальным Apple Tech Specs (304.1 × 214.9 мм). Требуется контрольный замер линейкой перед отправкой на плоттер.",
+  "verified": false
+}

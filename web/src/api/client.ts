@@ -4,6 +4,7 @@ import type {
   StickerDetail,
   StickerListResponse,
   CategoryTree,
+  TagInfo,
   DesignData,
   DesignValidationResult,
   StickerImageSize,
@@ -16,16 +17,6 @@ export interface StickerFilterParams {
   tag?: string;
   page?: number;
   per_page?: number;
-}
-
-export interface PopularTagItem {
-  tag: string;
-  count: number;
-}
-
-export interface PopularTagsResponse {
-  tags: PopularTagItem[];
-  total_unique: number;
 }
 
 class ApiClient {
@@ -92,8 +83,8 @@ class ApiClient {
     return this.request<CategoryTree>("/api/v1/categories");
   }
 
-  async getPopularTags(limit = 30): Promise<PopularTagsResponse> {
-    return this.request<PopularTagsResponse>(`/api/v1/tags?limit=${limit}`);
+  async getPopularTags(limit = 30): Promise<TagInfo[]> {
+    return this.request<TagInfo[]>(`/api/v1/tags?limit=${limit}`);
   }
 
   async validateDesign(design: DesignData): Promise<DesignValidationResult> {

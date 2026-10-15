@@ -6,6 +6,7 @@ export type StickerSummary = components["schemas"]["StickerSummary"];
 export type StickerDetail = components["schemas"]["StickerDetail"];
 export type StickerListResponse = components["schemas"]["StickerListResponse"];
 export type CategoryTree = components["schemas"]["CategoryTree"];
+export type TagInfo = components["schemas"]["TagInfo"];
 export type DesignData = components["schemas"]["DesignData"];
 export type DesignPlacement = components["schemas"]["DesignPlacement"];
 export type DesignValidationResult = components["schemas"]["DesignValidationResult"];

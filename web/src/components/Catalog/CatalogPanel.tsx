@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Search, Tag, Image as ImageIcon, Loader2 } from "lucide-react";
-import { api, type PopularTagItem } from "../../api/client";
-import type { StickerSummary } from "../../types";
+import { api } from "../../api/client";
+import type { StickerSummary, TagInfo } from "../../types";
 import { useDesignStore } from "../../store/designStore";
 
 export const CatalogPanel: React.FC = () => {
   const [stickers, setStickers] = useState<StickerSummary[]>([]);
-  const [popularTags, setPopularTags] = useState<PopularTagItem[]>([]);
+  const [popularTags, setPopularTags] = useState<TagInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +19,7 @@ export const CatalogPanel: React.FC = () => {
   useEffect(() => {
     api
       .getPopularTags(20)
-      .then((res) => setPopularTags(res.tags))
+      .then((tags) => setPopularTags(Array.isArray(tags) ? tags : []))
       .catch((err) => console.error("Ошибка загрузки тегов:", err));
   }, []);
 
@@ -110,19 +110,19 @@ export const CatalogPanel: React.FC = () => {
             </button>
             {popularTags.slice(0, 10).map((t) => (
               <button
-                key={t.tag}
+                key={t.name}
                 onClick={() => {
-                  setSelectedTag(selectedTag === t.tag ? null : t.tag);
+                  setSelectedTag(selectedTag === t.name ? null : t.name);
                   setPage(1);
                 }}
                 className={`px-2 py-0.5 rounded whitespace-nowrap transition-colors flex items-center gap-1 ${
-                  selectedTag === t.tag
+                  selectedTag === t.name
                     ? "bg-blue-600 text-white font-medium"
                     : "bg-[#283142] text-slate-300 hover:bg-[#344055]"
                 }`}
               >
                 <Tag className="w-2.5 h-2.5 opacity-60" />
-                {t.tag}
+                {t.name}
               </button>
             ))}
           </div>
@@ -136,13 +136,13 @@ export const CatalogPanel: React.FC = () => {
             <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
             <span className="text-xs">Загрузка стикеров...</span>
           </div>
-        ) : stickers.length === 0 ? (
+        ) : (stickers ?? []).length === 0 ? (
           <div className="text-center py-12 text-slate-500 text-xs">
             Ничего не найдено
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
-            {stickers.map((sticker) => {
+            {(stickers ?? []).map((sticker) => {
               const thumbUrl = api.getStickerImageUrl(sticker.asset_id, "thumb");
               return (
                 <div

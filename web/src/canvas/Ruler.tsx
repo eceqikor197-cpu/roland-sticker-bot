@@ -7,6 +7,8 @@ interface RulerProps {
   height_mm: number;
   scale: number;
   rulerThickness?: number;
+  originX?: number;
+  originY?: number;
 }
 
 export const Ruler: React.FC<RulerProps> = ({
@@ -14,6 +16,8 @@ export const Ruler: React.FC<RulerProps> = ({
   height_mm,
   scale,
   rulerThickness = 24,
+  originX = 0,
+  originY = 0,
 }) => {
   const widthPx = mm_to_px(width_mm, scale);
   const heightPx = mm_to_px(height_mm, scale);
@@ -40,8 +44,9 @@ export const Ruler: React.FC<RulerProps> = ({
 
   return (
     <Layer listening={false}>
-      {/* Верхняя горизонтальная линейка */}
-      <Group y={-rulerThickness}>
+      <Group x={originX} y={originY}>
+        {/* Верхняя горизонтальная линейка */}
+        <Group y={-rulerThickness}>
         <Line
           points={[0, rulerThickness, widthPx, rulerThickness]}
           stroke="#475569"
@@ -95,6 +100,7 @@ export const Ruler: React.FC<RulerProps> = ({
           </Group>
         ))}
       </Group>
-    </Layer>
+    </Group>
+  </Layer>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Stage, Group } from "react-konva";
+import { Stage } from "react-konva";
 import type Konva from "konva";
 import { useDesignStore } from "../store/designStore";
 import { BackgroundLayer } from "./BackgroundLayer";
@@ -144,39 +144,46 @@ export const KonvaCanvas: React.FC = () => {
           }
         }}
       >
-        <Group x={originX} y={originY}>
-          {/* Линейки */}
-          <Ruler
-            width_mm={object.width_mm}
-            height_mm={object.height_mm}
-            scale={scale}
-            rulerThickness={24}
-          />
+        {/* Линейки */}
+        <Ruler
+          width_mm={object.width_mm}
+          height_mm={object.height_mm}
+          scale={scale}
+          rulerThickness={24}
+          originX={originX}
+          originY={originY}
+        />
 
-          {/* Слой 1: Контур и фон крышки ноутбука */}
-          <BackgroundLayer object={object} scale={scale} />
+        {/* Слой 1: Контур и фон крышки ноутбука */}
+        <BackgroundLayer
+          object={object}
+          scale={scale}
+          originX={originX}
+          originY={originY}
+        />
 
-          {/* Слой 2: Стикеры с маской обрезки (clipFunc) */}
-          <StickersLayer
-            placements={placements}
-            object={object}
-            scale={scale}
-            selectedId={selectedId}
-            onSelectPlacement={selectPlacement}
-            onUpdatePlacement={updatePlacement}
-            registerNodeRef={registerNodeRef}
-          />
+        {/* Слой 2: Стикеры с маской обрезки (clipFunc) */}
+        <StickersLayer
+          placements={placements}
+          object={object}
+          scale={scale}
+          originX={originX}
+          originY={originY}
+          selectedId={selectedId}
+          onSelectPlacement={selectPlacement}
+          onUpdatePlacement={updatePlacement}
+          registerNodeRef={registerNodeRef}
+        />
 
-          {/* Слой 3: Transformer и оверлей выделения */}
-          <OverlayLayer
-            selectedNode={selectedNode}
-            selectedPlacement={selectedPlacement}
-            object={object}
-            scale={scale}
-            isShiftPressed={isShiftPressed}
-            onUpdatePlacement={updatePlacement}
-          />
-        </Group>
+        {/* Слой 3: Transformer и оверлей выделения */}
+        <OverlayLayer
+          selectedNode={selectedNode}
+          selectedPlacement={selectedPlacement}
+          object={object}
+          scale={scale}
+          isShiftPressed={isShiftPressed}
+          onUpdatePlacement={updatePlacement}
+        />
       </Stage>
     </div>
   );

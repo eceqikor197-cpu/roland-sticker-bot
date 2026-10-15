@@ -10,6 +10,8 @@ interface StickersLayerProps {
   object: ObjectItem;
   scale: number;
   selectedId: string | null;
+  originX?: number;
+  originY?: number;
   onSelectPlacement: (id: string | null) => void;
   onUpdatePlacement: (id: string, updates: Partial<CanvasPlacement>, recordHistory?: boolean) => void;
   registerNodeRef: (id: string, node: Konva.Group | null) => void;
@@ -20,6 +22,8 @@ export const StickersLayer: React.FC<StickersLayerProps> = ({
   object,
   scale,
   selectedId,
+  originX = 0,
+  originY = 0,
   onSelectPlacement,
   onUpdatePlacement,
   registerNodeRef,
@@ -52,20 +56,22 @@ export const StickersLayer: React.FC<StickersLayerProps> = ({
 
   return (
     <Layer>
-      {/* Группа с маской обрезки (clipFunc) по форме крышки ноутбука */}
-      <Group clipFunc={clipFunc}>
-        {sortedPlacements.map((placement) => (
-          <StickerNode
-            key={placement.id}
-            placement={placement}
-            object={object}
-            scale={scale}
-            isSelected={selectedId === placement.id}
-            onSelect={() => onSelectPlacement(placement.id)}
-            onUpdate={(updates, recordHistory) => onUpdatePlacement(placement.id, updates, recordHistory)}
-            nodeRefCallback={(node) => registerNodeRef(placement.id, node)}
-          />
-        ))}
+      <Group x={originX} y={originY}>
+        {/* Группа с маской обрезки (clipFunc) по форме крышки ноутбука */}
+        <Group clipFunc={clipFunc}>
+          {sortedPlacements.map((placement) => (
+            <StickerNode
+              key={placement.id}
+              placement={placement}
+              object={object}
+              scale={scale}
+              isSelected={selectedId === placement.id}
+              onSelect={() => onSelectPlacement(placement.id)}
+              onUpdate={(updates, recordHistory) => onUpdatePlacement(placement.id, updates, recordHistory)}
+              nodeRefCallback={(node) => registerNodeRef(placement.id, node)}
+            />
+          ))}
+        </Group>
       </Group>
     </Layer>
   );

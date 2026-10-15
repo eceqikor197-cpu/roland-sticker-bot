@@ -6,9 +6,16 @@ import { mm_to_px } from "../geometry";
 interface BackgroundLayerProps {
   object: ObjectItem;
   scale: number;
+  originX?: number;
+  originY?: number;
 }
 
-export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ object, scale }) => {
+export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
+  object,
+  scale,
+  originX = 0,
+  originY = 0,
+}) => {
   const widthPx = mm_to_px(object.width_mm, scale);
   const heightPx = mm_to_px(object.height_mm, scale);
   const cornerRadiusPx = mm_to_px(object.corner_radius_mm ?? 8.0, scale);
@@ -21,7 +28,7 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ object, scale 
   return (
     <Layer listening={false}>
       {/* Тень и корпус ноутбука */}
-      <Group>
+      <Group x={originX} y={originY}>
         {/* Внешняя мягкая тень корпуса */}
         <Rect
           x={0}

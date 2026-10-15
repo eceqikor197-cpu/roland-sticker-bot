@@ -17,7 +17,7 @@ import {
   get_sticker_polygon,
   get_rotated_bbox,
   is_sticker_inside_object,
-} from "./index.ts";
+} from "./index";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

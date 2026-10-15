@@ -1,7 +1,6 @@
 import type {
   ObjectItem,
   ObjectsListResponse,
-  StickerSummary,
   StickerDetail,
   StickerListResponse,
   CategoryTree,
@@ -64,7 +63,7 @@ class ApiClient {
 
   async getObjects(): Promise<ObjectItem[]> {
     const res = await this.request<ObjectsListResponse>("/api/v1/objects");
-    return res.items;
+    return res.items ?? [];
   }
 
   async getObject(objectId: string): Promise<ObjectItem> {

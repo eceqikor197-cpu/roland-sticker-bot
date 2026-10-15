@@ -4,13 +4,12 @@ import type { ObjectItem } from "../types";
 
 const mockObject: ObjectItem = {
   id: "macbook_air_13",
-  name: "MacBook Air 13\" (M2/M3)",
-  category: "laptop",
+  title: "MacBook Air 13\" (M2/M3)",
   width_mm: 304.1,
   height_mm: 214.9,
   corner_radius_mm: 8.0,
   safe_margin_mm: 4.0,
-  mask_svg_path_mm: null,
+  mask_svg_path_mm: "",
   verified: false,
 };
 
@@ -159,7 +158,7 @@ describe("DesignStore Zustand Store", () => {
     store.sendToBack(id3);
     let state = useDesignStore.getState();
     let p3 = state.placements.find((p) => p.id === id3);
-    let p1 = state.placements.find((p) => p.id === id1);
+    const p1 = state.placements.find((p) => p.id === id1);
     expect(p3!.z).toBeLessThan(p1!.z);
 
     // bringToFront для st_3
@@ -200,6 +199,8 @@ describe("DesignStore Zustand Store", () => {
     });
 
     const serialized = store.getSerializedDesign();
+    const directSerialized = serializeDesign(mockObject, useDesignStore.getState().placements);
+    expect(serialized).toEqual(directSerialized);
     expect(serialized).not.toBeNull();
     expect(serialized?.schema_version).toBe("1.0");
     expect(serialized?.object_id).toBe("macbook_air_13");

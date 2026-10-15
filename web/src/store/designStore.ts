@@ -193,7 +193,7 @@ export const useDesignStore = create<DesignState>((set, get) => {
       }
 
       // Клампинг ширины если она меняется
-      let finalUpdates = { ...updates };
+      const finalUpdates = { ...updates };
       if (updates.width_mm !== undefined) {
         finalUpdates.width_mm = Math.max(15.0, Math.min(150.0, updates.width_mm));
       }

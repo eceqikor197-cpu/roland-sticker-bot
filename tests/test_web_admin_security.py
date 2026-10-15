@@ -236,3 +236,25 @@ def test_legacy_auth_bypasses_removed(test_server: Tuple[str, int]) -> None:
     status, headers, _ = make_request(host, port, "GET", "/", headers=headers_legacy)
     assert status == 302
     assert headers.get("location", "").startswith("/login")
+
+
+def test_web_pages_render_templates() -> None:
+    """Проверка загрузки и рендеринга шаблонов из templates/*.html через web.pages."""
+    from web.pages import render_dashboard, render_login_page, render_template
+
+    # 1. login page
+    login_html = render_login_page(next_url="/custom?x=1", error_msg="Тестовая ошибка <script>")
+    assert "Тестовая ошибка &lt;script&gt;" in login_html
+    assert "/custom?x=1" in login_html
+    assert "<form method=\"POST\" action=\"/login\">" in login_html
+
+    # 2. dashboard page
+    dash_html = render_dashboard("all", hot_msg="file.eps", csrf_token="test_token_123")
+    assert "Админ-панель Roland VP-540" in dash_html
+    assert "test_token_123" in dash_html
+    assert "file.eps" in dash_html
+
+    # 3. direct render_template
+    custom = render_template("login.html", {"err_html": "ERR", "next_url": "/test"})
+    assert "ERR" in custom
+    assert "/test" in custom

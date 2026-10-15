@@ -1,0 +1,33 @@
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="user-badge">👤 {{uname_html}}</div>
+            <div class="meta-time">🕒 {{ts_str}} • {{last_act}}</div>
+        </div>
+        <span class="contour-badge">✂️ {{nc}} конт. • {{qty}} шт</span>
+    </div>
+    <div class="preview-pair">
+        <a href="/files/{{jid}}/orig" target="_blank" class="img-box" title="Открыть исходник">
+            <span class="img-label">Исходник</span>
+            <img src="/files/{{jid}}/orig" loading="lazy" alt="orig" />
+        </a>
+        <a href="/files/{{jid}}/preview" target="_blank" class="img-box" title="Открыть превью контуров">
+            <span class="img-label magenta">CutContour / PerfCut</span>
+            <img src="/files/{{jid}}/preview" loading="lazy" alt="preview" />
+        </a>
+    </div>
+    <div class="card-specs">
+        <span>📐 <b>{{w_mm}} × {{h_mm}} мм</b> ({{size_mb}} МБ)</span>
+        <span>📏 Кант: <b>{{off}} мм</b></span>
+        <span>🔪 <b>{{perf_mode_label}}</b></span>
+        <span>💰 Себест: <b>~{{cost_rub}} ₽</b> | Клиенту: <b>~{{retail_rub}} ₽</b></span>
+    </div>
+    <div class="card-actions">
+        <a class="btn btn-primary" href="/files/{{jid}}/eps">📥 Скачать .EPS</a>
+        <form method="POST" action="/send_hot/{{jid}}" style="margin:0;flex:1;display:flex;">
+            <input type="hidden" name="csrf_token" value="{{csrf_token}}" />
+            <button type="submit" class="btn btn-hot" style="width:100%;border:none;cursor:pointer;font-family:inherit;">{{hot_btn_text}}</button>
+        </form>
+        <a class="btn btn-secondary" href="/files/{{jid}}/orig" download>🖼</a>
+    </div>
+</div>

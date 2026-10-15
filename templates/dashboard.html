@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="csrf-token" content="{{csrf_token}}" />
+<meta http-equiv="refresh" content="25" />
+<title>👑 Админ-панель Roland VP-540 — crybaby</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #181b24;
+    --border: #2a2f3d;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --magenta: #ec008c;
+    --cyan: #00aeef;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .top-bar {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: 16px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  h1 { margin: 0; font-size: 21px; display: flex; align-items: center; gap: 10px; }
+  .stats-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-box {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 8px 13px; border-radius: 10px; font-size: 13px;
+  }
+  .smb-banner {
+    background: rgba(0, 174, 239, 0.1); border: 1px solid rgba(0, 174, 239, 0.35);
+    padding: 10px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 18px;
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .pill {
+    text-decoration: none; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px;
+    font-size: 13px; transition: 0.15s;
+  }
+  .pill:hover, .pill.active {
+    background: var(--magenta); border-color: var(--magenta); color: #fff; font-weight: 600;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(390px, 1fr)); gap: 18px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .user-badge { font-weight: 600; font-size: 15px; }
+  .meta-time { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .contour-badge {
+    background: rgba(236, 0, 140, 0.18); color: #ff5cc0; border: 1px solid rgba(236, 0, 140, 0.4);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .preview-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .img-box {
+    position: relative; background: #232734; border-radius: 10px; overflow: hidden;
+    aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+  }
+  .img-box img { width: 100%; height: 100%; object-fit: contain; }
+  .img-label {
+    position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.72);
+    color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px;
+  }
+  .img-label.magenta { background: var(--magenta); }
+  .card-specs {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted);
+    background: rgba(0,0,0,0.22); padding: 9px 12px; border-radius: 8px;
+  }
+  .card-specs b { color: var(--text); }
+  .card-actions { display: flex; gap: 8px; margin-top: auto; }
+  .btn {
+    flex: 1; text-align: center; text-decoration: none; padding: 9px 10px;
+    border-radius: 8px; font-size: 13px; font-weight: 600; transition: 0.15s;
+  }
+  .btn-primary { background: var(--magenta); color: #fff; }
+  .btn-hot { background: #0284c7; color: #fff; }
+  .btn-secondary { background: #262b38; color: var(--text); flex: 0.25; }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <h1>👑 Админ-панель Roland VP-540 <span style="font-size:13px;color:var(--muted);font-weight:400;">(сервер crybaby)</span></h1>
+    <div class="stats-row">
+      <a class="stat-box" href="/harvester" style="text-decoration:none;color:#fff;background:var(--magenta);border-color:var(--magenta);font-weight:600;">🚜 Открыть Базу Парсера 24/7 (Google Drive 5 ТБ)</a>
+      <div class="stat-box">👥 Пользователей: <b>{{user_count}}</b></div>
+      <div class="stat-box">🗂 Работ: <b>{{jobs_count}}</b></div>
+      <div class="stat-box">✂️ Контуров: <b>{{total_contours}}</b></div>
+      <div class="stat-box">🖨 В Hot Folder: <b>{{hot_files_count}}</b></div>
+      <a class="stat-box" href="/logout" style="text-decoration:none;color:#fca5a5;border-color:#ef4444;">🔓 Выйти</a>
+    </div>
+  </div>
+  {{toast_html}}
+  <div class="smb-banner">
+    <span>🖨 <b>Сетевая папка Hot Folder для ПК с плоттером:</b></span>
+    <span>Windows: <code>\\192.168.0.108\Roland_HotFolder\Queue_EPS</code></span>
+    <span>Tailscale: <code>\\100.76.178.11\Roland_HotFolder\Queue_EPS</code></span>
+    <span>Mac: <code>smb://192.168.0.108/Roland_HotFolder</code></span>
+  </div>
+  <div class="pills">
+    {{user_pills}}
+  </div>
+  <div class="grid">
+    {{cards_html}}
+  </div>
+</body>
+</html>

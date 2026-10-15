@@ -36,4 +36,32 @@ PUBLIC_CATALOG: bool = os.getenv("PUBLIC_CATALOG", "false").lower() in ("true", 
 # Путь к базе данных SQLite для пользователей, настроек и заданий (Фаза 6)
 STORAGE_DB_PATH: Path = Path(os.getenv("STORAGE_DB_PATH", str(BASE_DIR / "bot_storage.db")))
 
+# Настройки веб-админки и туннелей
+WEB_HOST: str = os.getenv("ADMIN_WEB_HOST", "127.0.0.1")
+WEB_PORT: int = int(os.getenv("ADMIN_WEB_PORT", "8090"))
+ADMIN_WEB_PASSWORD: str = os.getenv("ADMIN_WEB_PASSWORD", "roland")
+ADMIN_WEB_COOKIE_SECURE: bool = os.getenv("ADMIN_WEB_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+ENABLE_PUBLIC_TUNNEL: bool = os.getenv("ENABLE_PUBLIC_TUNNEL", "false").lower() in ("true", "1", "yes")
+
+# Администраторы Telegram-бота
+ADMIN_IDS: set[int] = {
+    int(x.strip())
+    for x in os.getenv("ADMIN_IDS", "870592714").split(",")
+    if x.strip().isdigit()
+}
+
+# Директории рабочих файлов и Hot Folder
+WORK_DIR: Path = BASE_DIR / "bot_workspace"
+JOBS_DIR: Path = WORK_DIR / "jobs"
+HOT_FOLDER_ROOT: Path = Path("/home/crybaby/Roland_HotFolder")
+if not HOT_FOLDER_ROOT.parent.exists():
+    HOT_FOLDER_ROOT = WORK_DIR / "Roland_HotFolder"
+HOT_QUEUE_EPS_DIR: Path = HOT_FOLDER_ROOT / "Queue_EPS"
+HOT_PREVIEWS_DIR: Path = HOT_FOLDER_ROOT / "Previews"
+
+WORK_DIR.mkdir(parents=True, exist_ok=True)
+JOBS_DIR.mkdir(parents=True, exist_ok=True)
+HOT_QUEUE_EPS_DIR.mkdir(parents=True, exist_ok=True)
+HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+
 

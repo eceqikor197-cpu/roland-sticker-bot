@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🔐 Вход администратора — Roland VP-540</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #0f1117; color: #f1f5f9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 20px;
+  }
+  .box {
+    background: #181b24; border: 1px solid #2a2f3d; border-radius: 16px;
+    padding: 28px; width: 100%; max-width: 400px;
+  }
+  h2 { margin: 0 0 8px 0; font-size: 20px; }
+  p { margin: 0 0 18px 0; color: #94a3b8; font-size: 13.5px; line-height: 1.45; }
+  input[type="password"] {
+    width: 100%; box-sizing: border-box; background: #0f1117; border: 1px solid #2a2f3d;
+    color: #fff; padding: 11px 14px; border-radius: 10px; font-size: 15px; margin-bottom: 14px;
+  }
+  button {
+    width: 100%; background: #ec008c; color: #fff; border: none; padding: 11px;
+    border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .back {
+    display: block; text-align: center; margin-top: 14px; color: #94a3b8;
+    text-decoration: none; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h2>🔐 Вход для администратора</h2>
+    <p>Каталог стикеров открыт для всех, а управление парсером и просмотр чужих работ доступны по паролю админа.</p>
+    {{err_html}}
+    <form method="POST" action="/login">
+      <input type="hidden" name="next" value="{{next_url}}" />
+      <input type="password" name="pw" placeholder="Введите пароль админа..." autofocus required />
+      <button type="submit">Войти в панель управления</button>
+    </form>
+    <a class="back" href="/harvester">⬅️ Вернуться в публичный каталог стикеров</a>
+  </div>
+</body>
+</html>

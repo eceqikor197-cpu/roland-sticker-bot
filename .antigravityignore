@@ -1,0 +1,9 @@
+bot_workspace/
+models/
+*.db
+*.db-journal
+*.eps
+debug_*
+preview_*
+.venv/
+__pycache__/

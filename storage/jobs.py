@@ -145,6 +145,10 @@ def save_job(meta: Dict[str, Any]) -> Dict[str, Any]:
 
     with _db_write_lock, conn:
         conn.execute(
+            "INSERT OR IGNORE INTO users (user_id, first_name, first_seen, last_seen, updated_at) VALUES (?, ?, ?, ?, ?)",
+            (user_id, f"User {user_id}", created_at, updated_at, updated_at),
+        )
+        conn.execute(
             """
             INSERT INTO jobs (
                 job_id, user_id, orig_stem, input_filename, eps_filename,

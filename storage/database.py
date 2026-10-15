@@ -87,7 +87,7 @@ def init_storage(db_path: Optional[Path] = None) -> None:
                     jobs_count INTEGER NOT NULL DEFAULT 0,
                     last_action TEXT NOT NULL DEFAULT '',
                     last_job_id TEXT NOT NULL DEFAULT '',
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL DEFAULT 0.0
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen DESC);

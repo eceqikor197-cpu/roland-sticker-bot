@@ -87,6 +87,10 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
     conn = get_storage_conn()
 
     with _db_write_lock, conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO users (user_id, first_name, first_seen, last_seen, updated_at) VALUES (?, ?, ?, ?, ?)",
+            (uid, f"User {uid}", now, now, now),
+        )
         row = conn.execute("SELECT * FROM prefs WHERE user_id = ?", (uid,)).fetchone()
         current = _row_to_prefs(row)
         current.update(kwargs)

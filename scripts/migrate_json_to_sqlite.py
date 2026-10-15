@@ -49,11 +49,29 @@ def _read_json_file(file_path: Path) -> Any:
 
 def find_json_source_files(base_dir: Path) -> Tuple[Optional[Path], Optional[Path], Optional[Path], Path]:
     """Ищет файлы users_db.json, user_prefs.json, admin_state.json и директорию jobs."""
-    # Проверяем в jobs/ (где telegram_bot.py по умолчанию держит WORK_DIR = BASE_DIR / "jobs")
-    jobs_dir = base_dir / "jobs" if (base_dir / "jobs").exists() else base_dir
+    # Проверяем возможные места расположения: bot_workspace, jobs, base_dir
+    possible_job_dirs = [
+        base_dir / "bot_workspace" / "jobs",
+        base_dir / "jobs",
+        base_dir / "bot_workspace",
+        base_dir,
+    ]
+    jobs_dir = base_dir
+    for jd in possible_job_dirs:
+        if jd.exists() and jd.is_dir():
+            jobs_dir = jd
+            break
+
+    search_dirs = [
+        base_dir / "bot_workspace",
+        base_dir / "jobs",
+        jobs_dir,
+        base_dir,
+    ]
 
     def find_one(name: str) -> Optional[Path]:
-        for candidate in (jobs_dir / name, base_dir / name):
+        for d in search_dirs:
+            candidate = d / name
             if candidate.exists() and candidate.is_file():
                 return candidate
         return None

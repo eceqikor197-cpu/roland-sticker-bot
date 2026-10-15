@@ -11,6 +11,12 @@ from bot.handlers_admin import (
     parse_size_text,
     register_admin_handlers,
 )
+from bot.handlers_callbacks import (
+    handle_hot_folder_request_callback,
+    handle_job_callback,
+    handle_user_callback,
+    register_callback_handlers,
+)
 from bot.jobs import (
     backfill_existing_jobs_and_users,
     cleanup_old_jobs,
@@ -47,9 +53,12 @@ __all__ = [
     "handle_admin_command",
     "handle_custom_size_text",
     "handle_delete_my_data",
+    "handle_hot_folder_request_callback",
+    "handle_job_callback",
     "handle_privacy",
     "handle_spy_command",
     "handle_start",
+    "handle_user_callback",
     "inspect_eps_stats",
     "is_admin",
     "list_all_jobs",
@@ -58,6 +67,7 @@ __all__ = [
     "parse_size_text",
     "process_and_send_job",
     "register_admin_handlers",
+    "register_callback_handlers",
     "run_cleanup_loop",
     "save_json_file",
     "send_or_edit_admin_feed_item",

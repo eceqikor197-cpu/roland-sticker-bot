@@ -50,6 +50,9 @@ ADMIN_IDS: set[int] = {
     if x.strip().isdigit()
 }
 
+# Разрешение обычным пользователям отправлять задания напрямую в Hot Folder без подтверждения
+ALLOW_USER_HOT_FOLDER: bool = os.getenv("ALLOW_USER_HOT_FOLDER", "false").lower() in ("true", "1", "yes")
+
 # Директории рабочих файлов и Hot Folder
 WORK_DIR: Path = BASE_DIR / "bot_workspace"
 JOBS_DIR: Path = WORK_DIR / "jobs"

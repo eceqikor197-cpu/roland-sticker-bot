@@ -48,6 +48,7 @@ from storage import (
     delete_user_jobs as storage_delete_user_jobs,
     delete_user_prefs as storage_delete_user_prefs,
     delete_user_record as storage_delete_user_record,
+    format_user_trigger as storage_format_user_trigger,
     get_admin_state as storage_get_admin_state,
     get_all_users as storage_get_all_users,
     get_job as storage_get_job,
@@ -55,12 +56,16 @@ from storage import (
     get_user_prefs as storage_get_user_prefs,
     get_user_short_slug as storage_get_user_short_slug,
     init_storage,
+    is_user_banned as storage_is_user_banned,
     list_all_jobs as storage_list_all_jobs,
     load_all_prefs as storage_load_all_prefs,
     record_user_activity as storage_record_user_activity,
     save_job as storage_save_job,
+    toggle_ban_user as storage_toggle_ban_user,
+    update_admin_state as storage_update_admin_state,
     update_job as storage_update_job,
     update_user_jobs_count as storage_update_user_jobs_count,
+    update_user_prefs as storage_update_user_prefs,
 )
 from web.pages import PERF_MODE_LABELS, format_ts
 
@@ -931,3 +936,145 @@ def format_privacy_text() -> str:
         "Вы можете в любой момент удалить все свои задания, файлы макетов, сохранённые настройки и профиль командой "
         "/delete_my_data или кнопкой ниже."
     )
+
+
+PREFS_FILE = WORK_DIR / "user_prefs.json"
+USERS_FILE = WORK_DIR / "users_db.json"
+ADMIN_STATE_FILE = WORK_DIR / "admin_state.json"
+db_lock = threading.RLock()
+
+
+def _get_prefs_file() -> Path:
+    try:
+        import telegram_bot
+
+        return Path(getattr(telegram_bot, "PREFS_FILE", PREFS_FILE))
+    except Exception:
+        return PREFS_FILE
+
+
+def _get_users_file() -> Path:
+    try:
+        import telegram_bot
+
+        return Path(getattr(telegram_bot, "USERS_FILE", USERS_FILE))
+    except Exception:
+        return USERS_FILE
+
+
+def _get_admin_state_file() -> Path:
+    try:
+        import telegram_bot
+
+        return Path(getattr(telegram_bot, "ADMIN_STATE_FILE", ADMIN_STATE_FILE))
+    except Exception:
+        return ADMIN_STATE_FILE
+
+
+def _get_db_lock() -> threading.RLock:
+    try:
+        import telegram_bot
+
+        return getattr(telegram_bot, "db_lock", db_lock)
+    except Exception:
+        return db_lock
+
+
+def get_admin_state() -> Dict[str, Any]:
+    return storage_get_admin_state()
+
+
+def update_admin_state(**kwargs: Any) -> Dict[str, Any]:
+    state = storage_update_admin_state(**kwargs)
+    try:
+        with _get_db_lock():
+            save_json_file(_get_admin_state_file(), state)
+    except Exception:
+        pass
+    return state
+
+
+def is_user_banned(user_id: int) -> bool:
+    if is_admin(user_id):
+        return False
+    return storage_is_user_banned(user_id, admin_ids=list(ADMIN_IDS))
+
+
+def toggle_ban_user(target_uid: int) -> bool:
+    now_banned = storage_toggle_ban_user(target_uid)
+    try:
+        with _get_db_lock():
+            save_json_file(_get_admin_state_file(), storage_get_admin_state())
+    except Exception:
+        pass
+    return now_banned
+
+
+def record_user_activity(
+    user_id: int,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    username: Optional[str] = None,
+    action: str = "",
+    last_job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    entry = storage_record_user_activity(
+        user_id,
+        first_name=first_name,
+        last_name=last_name,
+        username=username,
+        action=action,
+        last_job_id=last_job_id,
+    )
+    try:
+        with _get_db_lock():
+            users = load_json_file(_get_users_file(), {})
+            users[str(user_id)] = entry
+            save_json_file(_get_users_file(), users)
+    except Exception:
+        pass
+    return entry
+
+
+def format_user_trigger(user_info: Dict[str, Any]) -> str:
+    return storage_format_user_trigger(user_info)
+
+
+def get_user_display(user_id: int) -> str:
+    return storage_get_user_display(user_id)
+
+
+def get_user_short_slug(user_id: int) -> str:
+    return storage_get_user_short_slug(user_id)
+
+
+def load_all_prefs() -> Dict[str, Any]:
+    return storage_load_all_prefs()
+
+
+def save_all_prefs(data: Dict[str, Any]) -> None:
+    for uid_str, p in data.items():
+        if uid_str.isdigit() and isinstance(p, dict):
+            storage_update_user_prefs(int(uid_str), **p)
+    try:
+        with _get_db_lock():
+            save_json_file(_get_prefs_file(), data)
+    except Exception:
+        pass
+
+
+def get_user_prefs(user_id: int) -> Dict[str, Any]:
+    return storage_get_user_prefs(user_id)
+
+
+def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
+    prefs = storage_update_user_prefs(user_id, **kwargs)
+    try:
+        with _get_db_lock():
+            all_prefs = load_json_file(_get_prefs_file(), {})
+            all_prefs[str(user_id)] = prefs
+            save_json_file(_get_prefs_file(), all_prefs)
+    except Exception:
+        pass
+    return prefs
+

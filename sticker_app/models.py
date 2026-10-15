@@ -5,7 +5,7 @@ Pydantic-модели для API каталога веб-сервиса стик
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -101,4 +101,50 @@ class TagInfo(BaseModel):
 
     name: str = Field(..., description="Название тега")
     count: int = Field(..., ge=0, description="Частота использования среди доступных стикеров")
+
+
+class TasteProfileRequest(BaseModel):
+    """Запрос на вычисление вкусового профиля."""
+
+    liked: List[str] = Field(default_factory=list, description="Список ID понравившихся стикеров")
+    disliked: List[str] = Field(default_factory=list, description="Список ID непонравившихся стикеров")
+
+
+class TasteProfileResponse(BaseModel):
+    """Ответ с вектором вкусового профиля и топ-тегами."""
+
+    profile_vector: List[float] = Field(..., description="L2-нормированный вектор вкусового профиля")
+    top_tags: List[str] = Field(default_factory=list, description="Топ-5 ассоциативных тегов пользователя для UI")
+
+
+class RecommendConstraints(BaseModel):
+    """Ограничения диверсификации для рекомендаций."""
+
+    max_per_topic: int = Field(3, ge=1, le=50, description="Максимум стикеров из одной темы")
+    min_unique_topics: int = Field(5, ge=1, le=50, description="Минимум уникальных тем в выдаче")
+
+
+class RecommendRequest(BaseModel):
+    """Запрос на получение персональных рекомендаций."""
+
+    profile_vector: Optional[List[float]] = Field(None, description="Вектор вкусового профиля")
+    liked: List[str] = Field(default_factory=list, description="Список ID лайкнутых стикеров")
+    disliked: List[str] = Field(default_factory=list, description="Список ID дизлайкнутых стикеров")
+    count: int = Field(20, ge=1, le=100, description="Количество рекомендаций")
+    constraints: Optional[RecommendConstraints] = Field(default_factory=RecommendConstraints, description="Ограничения диверсификации")
+    include_liked: bool = Field(False, description="Включать ли уже лайкнутые стикеры в выдачу")
+
+
+class RecommendedSticker(StickerSummary):
+    """Карточка рекомендованного стикера с оценкой соответствия."""
+
+    score: float = Field(0.0, description="Оценка соответствия MMR")
+
+
+class RecommendResponse(BaseModel):
+    """Ответ с персональными рекомендациями."""
+
+    items: List[RecommendedSticker] = Field(default_factory=list, description="Список рекомендованных стикеров")
+    total: int = Field(..., description="Количество возвращенных рекомендаций")
+    is_cold_start: bool = Field(False, description="Флаг режима холодного старта")
 

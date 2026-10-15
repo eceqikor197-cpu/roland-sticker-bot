@@ -407,6 +407,139 @@
           }
         }
       }
+    },
+    "/api/v1/onboarding/cards": {
+      "get": {
+        "tags": [
+          "Recommender"
+        ],
+        "summary": "Разнообразный набор карточек для онбординга вкуса (FPS)",
+        "operationId": "get_onboarding_cards_api_v1_onboarding_cards_get",
+        "parameters": [
+          {
+            "name": "n",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Количество карточек для онбординга",
+              "default": 12,
+              "title": "N"
+            },
+            "description": "Количество карточек для онбординга"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StickerSummary"
+                  },
+                  "title": "Response Get Onboarding Cards Api V1 Onboarding Cards Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/taste/profile": {
+      "post": {
+        "tags": [
+          "Recommender"
+        ],
+        "summary": "Расчет вкусового профиля по лайкам и дизлайкам",
+        "operationId": "compute_taste_profile_api_v1_taste_profile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TasteProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TasteProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recommend": {
+      "post": {
+        "tags": [
+          "Recommender"
+        ],
+        "summary": "Персональные рекомендации с MMR диверсификацией",
+        "operationId": "get_recommendations_api_v1_recommend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -538,6 +671,248 @@
         ],
         "title": "PaginationMeta",
         "description": "Метаданные пагинации."
+      },
+      "RecommendConstraints": {
+        "properties": {
+          "max_per_topic": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Max Per Topic",
+            "description": "Максимум стикеров из одной темы",
+            "default": 3
+          },
+          "min_unique_topics": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Min Unique Topics",
+            "description": "Минимум уникальных тем в выдаче",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "title": "RecommendConstraints",
+        "description": "Ограничения диверсификации для рекомендаций."
+      },
+      "RecommendRequest": {
+        "properties": {
+          "profile_vector": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Vector",
+            "description": "Вектор вкусового профиля"
+          },
+          "liked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Liked",
+            "description": "Список ID лайкнутых стикеров"
+          },
+          "disliked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disliked",
+            "description": "Список ID дизлайкнутых стикеров"
+          },
+          "count": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "description": "Количество рекомендаций",
+            "default": 20
+          },
+          "constraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendConstraints"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ограничения диверсификации"
+          },
+          "include_liked": {
+            "type": "boolean",
+            "title": "Include Liked",
+            "description": "Включать ли уже лайкнутые стикеры в выдачу",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "RecommendRequest",
+        "description": "Запрос на получение персональных рекомендаций."
+      },
+      "RecommendResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendedSticker"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Список рекомендованных стикеров"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Количество возвращенных рекомендаций"
+          },
+          "is_cold_start": {
+            "type": "boolean",
+            "title": "Is Cold Start",
+            "description": "Флаг режима холодного старта",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "RecommendResponse",
+        "description": "Ответ с персональными рекомендациями."
+      },
+      "RecommendedSticker": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "title": "Asset Id",
+            "description": "Уникальный идентификатор стикера"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Название стикера"
+          },
+          "topic_name": {
+            "type": "string",
+            "title": "Topic Name",
+            "description": "Название темы"
+          },
+          "folder_slug": {
+            "type": "string",
+            "title": "Folder Slug",
+            "description": "Слаг темы"
+          },
+          "category_lvl1": {
+            "type": "string",
+            "title": "Category Lvl1",
+            "description": "Основная категория (уровень 1)"
+          },
+          "category_lvl2": {
+            "type": "string",
+            "title": "Category Lvl2",
+            "description": "Подкатегория (уровень 2)"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type",
+            "description": "Тип макета (single_sticker, pack_sheet, etc.)"
+          },
+          "width_mm": {
+            "type": "number",
+            "title": "Width Mm",
+            "description": "Физическая ширина в миллиметрах"
+          },
+          "height_mm": {
+            "type": "number",
+            "title": "Height Mm",
+            "description": "Физическая высота в миллиметрах"
+          },
+          "aspect": {
+            "type": "number",
+            "title": "Aspect",
+            "description": "Пропорция растра (ширина / высота)",
+            "default": 1.0
+          },
+          "aspect_ratio": {
+            "type": "number",
+            "title": "Aspect Ratio",
+            "description": "Пропорция растра (алиас для обратной совместимости)",
+            "default": 1.0
+          },
+          "alpha_coverage": {
+            "type": "number",
+            "title": "Alpha Coverage",
+            "description": "Доля непрозрачных пикселей (0.0..1.0)",
+            "default": 0.0
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Список тегов макета"
+          },
+          "palette": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Palette",
+            "description": "5 доминирующих HEX-цветов"
+          },
+          "license": {
+            "type": "string",
+            "title": "License",
+            "description": "Тип лицензии (own, licensed, cc0, unknown)"
+          },
+          "usable_in_service": {
+            "type": "boolean",
+            "title": "Usable In Service",
+            "description": "Доступен ли макет для использования в сервисе"
+          },
+          "thumb_url": {
+            "type": "string",
+            "title": "Thumb Url",
+            "description": "URL миниатюры (до 256px, WebP)"
+          },
+          "preview_url": {
+            "type": "string",
+            "title": "Preview Url",
+            "description": "URL превью (до 1024px, WebP)"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Оценка соответствия MMR",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "title",
+          "topic_name",
+          "folder_slug",
+          "category_lvl1",
+          "category_lvl2",
+          "asset_type",
+          "width_mm",
+          "height_mm",
+          "license",
+          "usable_in_service",
+          "thumb_url",
+          "preview_url"
+        ],
+        "title": "RecommendedSticker",
+        "description": "Карточка рекомендованного стикера с оценкой соответствия."
       },
       "StickerDetail": {
         "properties": {
@@ -878,6 +1253,55 @@
         ],
         "title": "TagInfo",
         "description": "Информация о теге каталога с частотой использования."
+      },
+      "TasteProfileRequest": {
+        "properties": {
+          "liked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Liked",
+            "description": "Список ID понравившихся стикеров"
+          },
+          "disliked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disliked",
+            "description": "Список ID непонравившихся стикеров"
+          }
+        },
+        "type": "object",
+        "title": "TasteProfileRequest",
+        "description": "Запрос на вычисление вкусового профиля."
+      },
+      "TasteProfileResponse": {
+        "properties": {
+          "profile_vector": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Profile Vector",
+            "description": "L2-нормированный вектор вкусового профиля"
+          },
+          "top_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Tags",
+            "description": "Топ-5 ассоциативных тегов пользователя для UI"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_vector"
+        ],
+        "title": "TasteProfileResponse",
+        "description": "Ответ с вектором вкусового профиля и топ-тегами."
       },
       "TopicInfo": {
         "properties": {

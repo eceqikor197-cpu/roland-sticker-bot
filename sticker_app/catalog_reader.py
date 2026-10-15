@@ -16,7 +16,7 @@ import math
 import sqlite3
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sticker_app.config as config
 from sticker_app.db import get_app_db
@@ -642,3 +642,73 @@ def list_popular_tags(
         return []
     finally:
         conn.close()
+
+
+def get_stickers_by_ids(
+    asset_ids: Sequence[str],
+    storage_root: Optional[Path] = None,
+    db_path: Optional[Path] = None,
+    app_db_path: Optional[Path] = None,
+) -> List[StickerSummary]:
+    """
+    Возвращает список StickerSummary для переданных asset_id с сохранением порядка следования.
+    """
+    if not asset_ids:
+        return []
+
+    conn = get_db_connection(db_path, app_db_path=app_db_path)
+    try:
+        has_meta = _is_app_meta_available(conn)
+        placeholders = ",".join("?" for _ in asset_ids)
+
+        if has_meta:
+            query = f"""
+                SELECT
+                    a.asset_id, a.topic_id, a.category_lvl1, a.category_lvl2, a.folder_slug,
+                    a.topic_name, a.asset_type, a.title, a.source_name, a.source_url,
+                    COALESCE(m.license, a.license) AS license, a.phash_hex,
+                    a.width_px, a.height_px, a.width_mm, a.height_mm,
+                    a.offset_mm, a.perf_cut_mode, a.num_contours, a.rel_folder_path,
+                    a.eps_filename, a.png_filename, a.parent_asset_id, a.created_at,
+                    COALESCE(m.usable_in_service, 1) AS usable_in_service,
+                    COALESCE(m.takedown, 0) AS takedown,
+                    COALESCE(m.tags_json, '[]') AS tags_json,
+                    COALESCE(m.palette_json, '[]') AS palette_json,
+                    COALESCE(m.aspect, CASE WHEN a.height_px > 0 THEN ROUND(1.0 * a.width_px / a.height_px, 4) ELSE 1.0 END) AS aspect,
+                    COALESCE(m.alpha_coverage, 0.0) AS alpha_coverage
+                FROM assets a
+                LEFT JOIN app.asset_meta m ON a.asset_id = m.asset_id
+                WHERE a.asset_id IN ({placeholders})
+            """
+        else:
+            query = f"""
+                SELECT
+                    a.asset_id, a.topic_id, a.category_lvl1, a.category_lvl2, a.folder_slug,
+                    a.topic_name, a.asset_type, a.title, a.source_name, a.source_url,
+                    a.license, a.phash_hex, a.width_px, a.height_px, a.width_mm, a.height_mm,
+                    a.offset_mm, a.perf_cut_mode, a.num_contours, a.rel_folder_path,
+                    a.eps_filename, a.png_filename, a.parent_asset_id, a.created_at,
+                    1 AS usable_in_service,
+                    0 AS takedown,
+                    '[]' AS tags_json,
+                    '[]' AS palette_json,
+                    CASE WHEN a.height_px > 0 THEN ROUND(1.0 * a.width_px / a.height_px, 4) ELSE 1.0 END AS aspect,
+                    0.0 AS alpha_coverage
+                FROM assets a
+                WHERE a.asset_id IN ({placeholders})
+            """
+
+        rows = conn.execute(query, list(asset_ids)).fetchall()
+        summaries_by_id: Dict[str, StickerSummary] = {}
+        for r in rows:
+            aid = str(r["asset_id"])
+            summaries_by_id[aid] = _row_to_summary(r)
+
+        result: List[StickerSummary] = []
+        for aid in asset_ids:
+            if aid in summaries_by_id:
+                result.append(summaries_by_id[aid])
+        return result
+    finally:
+        conn.close()
+

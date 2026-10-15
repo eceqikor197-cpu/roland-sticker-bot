@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 import sticker_app.config as config
 from sticker_app.catalog_reader import (
     get_sticker,
+    get_stickers_by_ids,
     list_categories,
     list_popular_tags,
     list_stickers,
@@ -23,10 +24,17 @@ from sticker_app.image_service import get_or_generate_image
 from sticker_app.models import (
     CategoryTree,
     HealthResponse,
+    RecommendRequest,
+    RecommendResponse,
+    RecommendedSticker,
     StickerDetail,
     StickerListResponse,
+    StickerSummary,
     TagInfo,
+    TasteProfileRequest,
+    TasteProfileResponse,
 )
+from sticker_app.recommender import get_recommender_engine
 
 logger = logging.getLogger("sticker_app")
 
@@ -167,4 +175,78 @@ def get_tags(
     limit: int = Query(50, ge=1, le=200, description="Количество возвращаемых тегов"),
 ) -> List[TagInfo]:
     return list_popular_tags(limit=limit)
+
+
+@app.get(
+    f"{config.API_PREFIX}/onboarding/cards",
+    response_model=List[StickerSummary],
+    tags=["Recommender"],
+    summary="Разнообразный набор карточек для онбординга вкуса (FPS)",
+)
+def get_onboarding_cards(
+    n: int = Query(12, ge=1, le=50, description="Количество карточек для онбординга"),
+) -> List[StickerSummary]:
+    engine = get_recommender_engine()
+    card_ids = engine.get_onboarding_cards(n=n, max_per_topic=2)
+    return get_stickers_by_ids(card_ids)
+
+
+@app.post(
+    f"{config.API_PREFIX}/taste/profile",
+    response_model=TasteProfileResponse,
+    tags=["Recommender"],
+    summary="Расчет вкусового профиля по лайкам и дизлайкам",
+)
+def compute_taste_profile(body: TasteProfileRequest) -> TasteProfileResponse:
+    engine = get_recommender_engine()
+    profile_vec, top_tags = engine.build_taste_profile(
+        liked_ids=body.liked,
+        disliked_ids=body.disliked,
+    )
+    return TasteProfileResponse(
+        profile_vector=profile_vec.tolist(),
+        top_tags=top_tags,
+    )
+
+
+@app.post(
+    f"{config.API_PREFIX}/recommend",
+    response_model=RecommendResponse,
+    tags=["Recommender"],
+    summary="Персональные рекомендации с MMR диверсификацией",
+)
+def get_recommendations(body: RecommendRequest) -> RecommendResponse:
+    engine = get_recommender_engine()
+    max_per_topic = body.constraints.max_per_topic if body.constraints else 3
+    min_unique_topics = body.constraints.min_unique_topics if body.constraints else 5
+
+    is_cold_start = len(body.liked) < 2 and (
+        body.profile_vector is None or len(body.profile_vector) == 0
+    )
+
+    scored_items = engine.recommend(
+        profile_vector=body.profile_vector,
+        liked_ids=body.liked,
+        disliked_ids=body.disliked,
+        count=body.count,
+        max_per_topic=max_per_topic,
+        min_unique_topics=min_unique_topics,
+        include_liked=body.include_liked,
+    )
+
+    ids = [aid for aid, _ in scored_items]
+    summaries = get_stickers_by_ids(ids)
+    score_map = dict(scored_items)
+
+    recommended = [
+        RecommendedSticker(**s.model_dump(), score=score_map.get(s.asset_id, 0.0))
+        for s in summaries
+    ]
+
+    return RecommendResponse(
+        items=recommended,
+        total=len(recommended),
+        is_cold_start=is_cold_start,
+    )
+
 

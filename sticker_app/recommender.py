@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
@@ -180,18 +181,25 @@ class RecommenderEngine:
         if n_items <= n:
             return list(self.asset_ids)
 
+        # Вычисляем эффективный лимит на тему:
+        # Если n превышает суммарную квоту (число тем * max_per_topic),
+        # равномерно расширяем лимит до ceil(n / topics_count), чтобы избежать перекосов
+        unique_topics_in_db = len({self._get_topic(aid) for aid in self.asset_ids})
+        if unique_topics_in_db > 0 and n > unique_topics_in_db * max_per_topic:
+            limit_per_topic = int(math.ceil(n / unique_topics_in_db))
+        else:
+            limit_per_topic = max_per_topic
+
         selected_indices: List[int] = []
         topic_counts: Dict[str, int] = {}
 
         # Начальная точка: детерминированно выбираем индекс 0 (или наиболее удаленный от среднего)
-        # Для абсолютной стабильности: индекс 0
         start_idx = 0
         selected_indices.append(start_idx)
         start_topic = self._get_topic(self.asset_ids[start_idx])
         topic_counts[start_topic] = 1
 
         # Инициализируем расстояния: d(i, j) = 1.0 - CosSim(i, j)
-        # CosSim(i, j) = matrix @ matrix[start_idx]
         sims = self.matrix @ self.matrix[start_idx]
         min_dists = 1.0 - sims
         # Клиппируем расстояния в [0.0, 2.0]
@@ -207,18 +215,27 @@ class RecommenderEngine:
                 if cand_idx in selected_indices:
                     continue
                 cand_topic = self._get_topic(self.asset_ids[cand_idx])
-                if topic_counts.get(cand_topic, 0) >= max_per_topic:
+                if topic_counts.get(cand_topic, 0) >= limit_per_topic:
                     continue
                 best_idx = cand_idx
                 break
 
             if best_idx is None:
-                # Если с ограничением max_per_topic кандидаты исчерпаны, берем без ограничения
-                for cand_idx in sorted_candidates:
-                    cand_idx = int(cand_idx)
-                    if cand_idx not in selected_indices:
-                        best_idx = cand_idx
-                        break
+                # Если кандидаты с текущим лимитом исчерпаны, выбираем из кандидатов с минимальным числом в теме
+                min_seen = min(
+                    (topic_counts.get(self._get_topic(self.asset_ids[int(c)]), 0)
+                     for c in sorted_candidates if int(c) not in selected_indices),
+                    default=None,
+                )
+                if min_seen is not None:
+                    for cand_idx in sorted_candidates:
+                        cand_idx = int(cand_idx)
+                        if cand_idx in selected_indices:
+                            continue
+                        cand_topic = self._get_topic(self.asset_ids[cand_idx])
+                        if topic_counts.get(cand_topic, 0) == min_seen:
+                            best_idx = cand_idx
+                            break
 
             if best_idx is None:
                 break

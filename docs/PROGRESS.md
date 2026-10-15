@@ -112,12 +112,51 @@
   - `pytest -q` — 139 passed, 2 xfailed.
   - `ruff check .` — All checks passed.
 - **Осталось / открытые вопросы:**
-  - Переход к этапу S4: Объекты оклейки, геометрия и единицы измерения (Tech Specs макбуков, mm <-> px, golden vectors tests/golden/geometry.json, схема дизайна design.schema.json).
+  - Реализовано в этапе S4.
+
+### Этап S4: Объекты оклейки, геометрия и единицы измерения
+- **Статус:** Завершён (ветка `feature/s4`)
+- **Сделано:**
+  - Создан каталог объектов оклейки `objects/`:
+    - `objects/macbook_air_13.json` (304.1 × 214.9 мм, $R=8.0$ мм, safe_margin=4.0 мм)
+    - `objects/macbook_air_15.json` (340.4 × 237.6 мм, $R=9.0$ мм, safe_margin=4.0 мм)
+    - `objects/macbook_pro_14.json` (312.6 × 221.2 мм, $R=8.0$ мм, safe_margin=4.0 мм)
+    - `objects/macbook_pro_16.json` (355.7 × 248.1 мм, $R=9.0$ мм, safe_margin=4.0 мм)
+    - Все объекты снабжены точной SVG-маской контура (`mask_svg_path_mm`), флагом `verified: false` до физического замера линейкой.
+  - Создан модуль загрузки объектов `sticker_app/objects.py` с защитой от path traversal и Pydantic-модели `ObjectItem`, `ObjectsListResponse` в `sticker_app/models.py`.
+  - Реализованы эндпоинты `GET /api/v1/objects` и `GET /api/v1/objects/{id}` с валидацией и 404-ответом.
+  - Созданы зеркальные модули геометрии на двух языках:
+    - Python: `sticker_app/geometry.py`
+    - TypeScript: `web/src/geometry/index.ts`
+    - Функции: `mm_to_px`, `px_to_mm`, `rotate_point` (вращение по часовой стрелке при оси Y вниз), `get_sticker_polygon`, `get_rotated_bbox`, `is_point_inside_rounded_rect`, `is_sticker_inside_object` (аналитическая проверка попадания полигона в скруглённый прямоугольник крышки ноутбука с дугами углов и безопасным отступом).
+  - Сгенерированы общие эталонные векторы `tests/golden/geometry.json`:
+    - 42 кейса конверсий `px <-> mm` по разным масштабам (1.0, 2.54, 3.7795, 10.0, 0.5, 4.0).
+    - 12 кейсов вращения отдельных точек на углы 0°, 90°, 180°, 270°, 360°, 37°, -15°, 359°, 45°, 720°.
+    - 36 комплексных кейсов стикеров на 4 моделях MacBook (в центре, с углами поворота, на краях, в скруглённых углах с выходом за границу дуги, с нарушением safe margin).
+  - Написаны зеркальные кросс-платформенные тесты, читающие **один и тот же** `tests/golden/geometry.json`:
+    - Python: `tests/app/test_geometry.py` (6 тестов)
+    - TypeScript: `web/src/geometry/index.test.ts` (5 тестов)
+    - Максимальная погрешность между Python и TypeScript: $\le 0.01$ мм.
+  - Создана схема дизайна `design.schema.json` (Draft 2020-12):
+    - `schema_version`: "1.0"
+    - `object_id`: string
+    - `placements`: массив до 150 стикеров, ширина 15.0–150.0 мм, координаты центра, rotation, z, locked.
+  - Создан модуль валидации дизайна `sticker_app/design.py` (`validate_design_data`, `check_design_boundaries`) и эндпоинт `POST /api/v1/design/validate`.
+  - Актуализирована спецификация `docs/openapi.json`.
+  - Написаны тесты: `tests/app/test_objects_api.py` (7 тестов), `tests/app/test_geometry.py` (6 тестов), `tests/app/test_design_schema.py` (10 тестов).
+- **Проверено:**
+  - `node --experimental-strip-types --test web/src/geometry/index.test.ts` — 5 passed (все 36 комплексных кейсов, вращения и конверсии).
+  - `pytest tests/app/` — 60 passed.
+  - `pytest -q` — 162 passed, 2 xfailed.
+  - `ruff check .` — All checks passed.
+  - `python scripts/export_openapi.py` — OpenAPI контракт актуализирован.
+- **Осталось / открытые вопросы:**
+  - Реальный замер линейкой крышек MacBook для подтверждения `verified: true` перед боевым запуском на плоттер (сейчас `verified: false`).
+  - Переход к этапу S5: Фронтенд кастомайзера на React + TypeScript + Vite + react-konva + Zustand.
 
 ---
 
 ### Следующие этапы
-- **S4:** Объекты, геометрия и единицы (Tech Specs макбуков, golden vectors).
 - **S5:** Фронтенд: холст-кастомайзер (React, Vite, Konva, Zustand).
 - **S6:** Онбординг вкуса и «Собрать с помощью ИИ» (раскладка с MMR).
 - **S7:** Экспорт для плоттера (лист резки, карта сборки, спот-цвет CutContour).

@@ -31,4 +31,4 @@
 - [x] **Фаза 5**: Безопасность конвейера `harvester` — отключение по умолчанию, лицензии, закрытие публичного каталога.
 - [x] **Фаза 6**: Миграция хранилища с JSON-файлов на SQLite (WAL) через модуль `storage/`.
 - [x] **Фаза 7**: Разделение монолита `telegram_bot.py` на модули `bot/`, `web/`, `pricing.py`.
-- [ ] **Фаза 8**: Документация (README, SECURITY, LICENSE) и CI (GitHub Actions).
+- [x] **Фаза 8**: Документация (README, SECURITY, LICENSE) и CI (GitHub Actions).

@@ -11,6 +11,7 @@ Telegram-бот на сервере crybaby для конвертации JPEG/P
 5. Встроенная Админ-панель (/admin) + Live-шпион + Веб-админка (http://192.168.0.108:8090).
 """
 
+import contextlib
 import datetime
 import hmac
 import html
@@ -39,6 +40,8 @@ from telebot.types import (
     InlineKeyboardMarkup,
     Message,
 )
+
+from PIL.Image import DecompressionBombError
 
 from jpeg2eps import (
     MM_TO_PT,
@@ -79,7 +82,88 @@ HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
 from harvester.config import BOT_TOKEN
 
-ADMIN_IDS = {870592714}
+ADMIN_IDS = {int(x.strip()) for x in os.getenv("ADMIN_IDS", "870592714").split(",") if x.strip().isdigit()}
+
+
+def is_admin(user_id: int) -> bool:
+    return int(user_id) in ADMIN_IDS
+
+
+ALLOW_USER_HOT_FOLDER = os.getenv("ALLOW_USER_HOT_FOLDER", "false").lower() in ("true", "1", "yes")
+MAX_UPLOAD_MB = float(os.getenv("MAX_UPLOAD_MB", "15"))
+MAX_SIZE_MM = float(os.getenv("MAX_SIZE_MM", "1370.0"))
+MIN_SIZE_MM = 5.0
+MIN_STRETCH = 0.1
+MAX_STRETCH = 10.0
+MAX_CONVERSIONS_PER_MINUTE = int(os.getenv("MAX_CONVERSIONS_PER_MINUTE", "6"))
+MAX_CONCURRENT_CONVERSIONS = int(os.getenv("MAX_CONCURRENT_CONVERSIONS", "2"))
+
+
+class ConversionLimiter:
+    """Ограничивает частоту (<= 6/мин) и параллельность (1 на пользователя, N глобально)."""
+
+    def __init__(
+        self,
+        max_per_minute: int = 6,
+        max_concurrent_global: int = 2,
+    ):
+        self.max_per_minute = max_per_minute
+        self.max_concurrent_global = max_concurrent_global
+        self._history: Dict[int, List[float]] = {}
+        self._active_users: set[int] = set()
+        self._lock = threading.Lock()
+        self._semaphore = threading.Semaphore(max_concurrent_global)
+
+    def check_and_acquire_user_slot(self, user_id: int) -> Tuple[bool, str]:
+        if is_admin(user_id):
+            return True, "ok"
+        now = time.time()
+        with self._lock:
+            if user_id in self._active_users:
+                return False, "concurrent"
+            user_times = [t for t in self._history.get(user_id, []) if now - t < 60.0]
+            self._history[user_id] = user_times
+            if len(user_times) >= self.max_per_minute:
+                return False, "rate_limit"
+            self._active_users.add(user_id)
+            return True, "ok"
+
+    def release_user_slot(self, user_id: int, record_completed: bool = True) -> None:
+        if is_admin(user_id):
+            return
+        now = time.time()
+        with self._lock:
+            self._active_users.discard(user_id)
+            if record_completed:
+                if user_id not in self._history:
+                    self._history[user_id] = []
+                self._history[user_id].append(now)
+
+    @contextlib.contextmanager
+    def run_conversion_slot(self, user_id: int, on_queued: Optional[Any] = None):
+        acquired_global = False
+        try:
+            acquired_now = self._semaphore.acquire(blocking=False)
+            if not acquired_now:
+                if on_queued:
+                    try:
+                        on_queued()
+                    except Exception:
+                        pass
+                self._semaphore.acquire(blocking=True)
+            acquired_global = True
+            yield
+        finally:
+            if acquired_global:
+                self._semaphore.release()
+            self.release_user_slot(user_id)
+
+
+conversion_limiter = ConversionLimiter(
+    max_per_minute=MAX_CONVERSIONS_PER_MINUTE,
+    max_concurrent_global=MAX_CONCURRENT_CONVERSIONS,
+)
+
 WEB_HOST = os.getenv("ADMIN_WEB_HOST", "127.0.0.1")
 WEB_PORT = int(os.getenv("ADMIN_WEB_PORT", "8090"))
 ADMIN_WEB_PASSWORD = os.getenv("ADMIN_WEB_PASSWORD", "roland")
@@ -88,6 +172,7 @@ ENABLE_PUBLIC_TUNNEL = os.getenv("ENABLE_PUBLIC_TUNNEL", "false").lower() in ("t
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 db_lock = threading.Lock()
+
 
 
 class WebSessionStore:
@@ -225,10 +310,6 @@ PERF_MODE_LABELS = {
     "sheet_frame": "CutContour + Рамка листа (PerfCut)",
     "die_cut": "CutContour + Вырубка наклеек (PerfCut)",
 }
-
-
-def is_admin(user_id: int) -> bool:
-    return int(user_id) in ADMIN_IDS
 
 
 def load_json_file(path: Path, default: Any) -> Any:
@@ -586,6 +667,7 @@ def build_job_keyboard(
     in_hot_folder: bool = False,
     a4_fit_qty: int = 1,
     menu_tab: Optional[str] = None,
+    hot_request_status: Optional[str] = None,
 ) -> InlineKeyboardMarkup:
     offset_mm = float(prefs.get("offset_mm", 2.5))
     size_mm = float(prefs.get("size_mm", 100.0))
@@ -854,11 +936,14 @@ def build_job_keyboard(
     kb.row(InlineKeyboardButton(bg_lbl, callback_data=f"job:{job_id}:bg:{bg_toggle_val}"))
 
     # Ряд 5: Отправка на плоттер
-    hot_lbl = (
-        "✅ Уже в Hot Folder плоттера (отправить ещё раз)"
-        if in_hot_folder
-        else "🚀 Отправить на ПК с плоттером (Hot Folder)"
-    )
+    if in_hot_folder:
+        hot_lbl = "✅ Уже в Hot Folder плоттера (отправить ещё раз)"
+    elif hot_request_status == "pending":
+        hot_lbl = "⏳ Заявка ожидает подтверждения админа"
+    elif not ALLOW_USER_HOT_FOLDER:
+        hot_lbl = "🚀 Запросить печать на плоттере (Hot Folder)"
+    else:
+        hot_lbl = "🚀 Отправить на ПК с плоттером (Hot Folder)"
     kb.row(InlineKeyboardButton(hot_lbl, callback_data=f"job:{job_id}:hot:1"))
 
     return kb
@@ -934,41 +1019,74 @@ def process_and_send_job(
     prefs = get_user_prefs(user_id)
 
     offset_mm = float(prefs["offset_mm"])
-    size_mm = float(prefs["size_mm"])
+    size_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, float(prefs["size_mm"])))
     keep_bg = bool(prefs["keep_background"])
     perf_mode = str(prefs.get("perf_cut_mode", "none"))
     perf_passes = int(prefs.get("perf_cut_passes", 2))
     nesting_qty = int(prefs.get("nesting_qty", 1))
     roll_width_mm = float(prefs.get("roll_width_mm", 1370.0))
-    stretch_x = float(prefs.get("stretch_x", 1.0))
-    stretch_y = float(prefs.get("stretch_y", 1.0))
+    stretch_x = max(MIN_STRETCH, min(MAX_STRETCH, float(prefs.get("stretch_x", 1.0))))
+    stretch_y = max(MIN_STRETCH, min(MAX_STRETCH, float(prefs.get("stretch_y", 1.0))))
     fit_a4_sheet = bool(prefs.get("fit_a4_sheet", False))
 
     eps_filename = f"{orig_stem}.eps"
     output_eps = job_dir / eps_filename
     preview_png = job_dir / "preview_cutcontour.png"
 
-    t0 = time.time()
-    convert_image_to_plotter_eps(
-        input_path=input_path,
-        output_eps=output_eps,
-        size_mm=size_mm,
-        offset_mm=offset_mm,
-        bg_tolerance=12.0,
-        keep_background=keep_bg,
-        no_cut_contour=False,
-        vectorize_artwork=False,
-        also_svg=False,
-        preview_png_path=preview_png,
-        perf_cut_mode=perf_mode,
-        nesting_qty=nesting_qty,
-        roll_width_mm=roll_width_mm,
-        stretch_x=stretch_x,
-        stretch_y=stretch_y,
-        fit_a4_sheet=fit_a4_sheet,
-        render_a4_guide_on_preview=True,
-        perf_cut_passes=perf_passes,
-    )
+    try:
+        t0 = time.time()
+        convert_image_to_plotter_eps(
+            input_path=input_path,
+            output_eps=output_eps,
+            size_mm=size_mm,
+            offset_mm=offset_mm,
+            bg_tolerance=12.0,
+            keep_background=keep_bg,
+            no_cut_contour=False,
+            vectorize_artwork=False,
+            also_svg=False,
+            preview_png_path=preview_png,
+            perf_cut_mode=perf_mode,
+            nesting_qty=nesting_qty,
+            roll_width_mm=roll_width_mm,
+            stretch_x=stretch_x,
+            stretch_y=stretch_y,
+            fit_a4_sheet=fit_a4_sheet,
+            render_a4_guide_on_preview=True,
+            perf_cut_passes=perf_passes,
+        )
+    except DecompressionBombError:
+        logger.warning("DecompressionBombError in process_and_send_job for user %s", user_id)
+        if status_msg_id is not None:
+            try:
+                bot.delete_message(chat_id, status_msg_id)
+            except Exception:
+                pass
+        bot.send_message(
+            chat_id,
+            "⚠️ <b>Файл слишком большой или повреждён (превышен лимит пикселей).</b>\n"
+            "Пожалуйста, уменьшите разрешение изображения.",
+        )
+        return
+    except Exception as exc:
+        logger.exception("Error in process_and_send_job for user %s", user_id)
+        if status_msg_id is not None:
+            try:
+                bot.delete_message(chat_id, status_msg_id)
+            except Exception:
+                pass
+        if is_admin(user_id):
+            bot.send_message(
+                chat_id,
+                f"❌ <b>Ошибка при обработке файла:</b>\n<code>{html.escape(str(exc))}</code>",
+            )
+        else:
+            bot.send_message(
+                chat_id,
+                "❌ <b>Не удалось обработать файл.</b>",
+            )
+        return
+
     elapsed = time.time() - t0
     num_contours, perf_contours, total_w_mm, total_h_mm = inspect_eps_stats(output_eps)
     eps_size_mb = output_eps.stat().st_size / (1024 * 1024)
@@ -1077,6 +1195,7 @@ def process_and_send_job(
         prefs,
         in_hot_folder=bool(meta.get("in_hot_folder")),
         a4_fit_qty=a4_fit_qty,
+        hot_request_status=meta.get("hot_folder_request_status"),
     )
 
     if preview_png.exists():
@@ -1565,7 +1684,7 @@ def parse_size_text(text: str) -> Tuple[float, ...]:
     if txt.startswith("/"):
         return ()
 
-    # 1. Проверяем ввод вида ШxВ (например: '12x8 см', '12х8', '150x90 мм', '2x1.5 м') без ограничений размера!
+    # 1. Проверяем ввод вида ШxВ (например: '12x8 см', '12х8', '150x90 мм', '2x1.5 м')
     m_rect = re.match(
         r"^(\d+(?:[.,]\d+)?)\s*[xх×*]\s*(\d+(?:[.,]\d+)?)\s*(см|cm|мм|mm|м|m)?$",
         txt,
@@ -1584,7 +1703,7 @@ def parse_size_text(text: str) -> Tuple[float, ...]:
         h_mm = max(5.0, round(h_mm, 1))
         return (w_mm, h_mm)
 
-    # 2. Обычный ввод одной стороны ('8.5 см', '120 мм', '2.5 м' — без верхнего лимита!)
+    # 2. Обычный ввод одной стороны ('8.5 см', '120 мм', '2.5 м')
     m = re.match(r"^(\d+(?:[.,]\d+)?)\s*(см|cm|мм|mm|м|m)?$", txt)
     if m:
         val = float(m.group(1).replace(",", "."))
@@ -1619,7 +1738,8 @@ def handle_custom_size_text(message: Message) -> None:
     parsed = parse_size_text(raw_txt)
 
     if len(parsed) == 2:
-        w_mm, h_mm = parsed
+        w_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[0]))
+        h_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[1]))
         size_mm = max(w_mm, h_mm)
         uinfo = record_user_activity(
             user.id,
@@ -1647,26 +1767,54 @@ def handle_custom_size_text(message: Message) -> None:
                 sx = w_mm / max(1.0, base_w_at_sz)
                 sy = h_mm / max(1.0, base_h_at_sz)
 
+        sx = max(MIN_STRETCH, min(MAX_STRETCH, round(sx, 4)))
+        sy = max(MIN_STRETCH, min(MAX_STRETCH, round(sy, 4)))
+
         update_user_prefs(
             user.id,
             size_mm=size_mm,
-            stretch_x=round(sx, 4),
-            stretch_y=round(sy, 4),
+            stretch_x=sx,
+            stretch_y=sy,
             fit_a4_sheet=False,
         )
         if job_dir and job_dir.exists() and (job_dir / "meta.json").exists():
+            meta = load_json_file(job_dir / "meta.json", {})
+            if not is_admin(user.id) and int(meta.get("user_id", 0)) != user.id:
+                bot.reply_to(message, "⛔ Это не ваш макет.")
+                return
+
+            can_convert, limit_reason = conversion_limiter.check_and_acquire_user_slot(user.id)
+            if not can_convert:
+                if limit_reason == "concurrent":
+                    bot.reply_to(message, "⏳ У вас уже выполняется конвертация. Пожалуйста, дождитесь её завершения.")
+                else:
+                    bot.reply_to(message, "⏳ Лимит: не более 6 конвертаций в минуту. Пожалуйста, подождите немного.")
+                return
+
             status_msg = bot.reply_to(
                 message,
                 f"📐 Растягиваю макет под габарит <b>~{w_mm/10.0:g} × {h_mm/10.0:g} см</b>...",
             )
-            process_and_send_job(
-                chat_id=message.chat.id,
-                user_id=user.id,
-                job_dir=job_dir,
-                status_msg_id=status_msg.message_id,
-                was_compressed_photo=False,
-                action_title=f"Габарит {w_mm/10.0:g}×{h_mm/10.0:g} см",
-            )
+
+            def on_queue_rect() -> None:
+                try:
+                    bot.edit_message_text(
+                        "⏳ <b>Сервер занят.</b> Макет в очереди на обработку...",
+                        chat_id=message.chat.id,
+                        message_id=status_msg.message_id,
+                    )
+                except Exception:
+                    pass
+
+            with conversion_limiter.run_conversion_slot(user.id, on_queued=on_queue_rect):
+                process_and_send_job(
+                    chat_id=message.chat.id,
+                    user_id=user.id,
+                    job_dir=job_dir,
+                    status_msg_id=status_msg.message_id,
+                    was_compressed_photo=False,
+                    action_title=f"Габарит {w_mm/10.0:g}×{h_mm/10.0:g} см",
+                )
         else:
             bot.reply_to(
                 message,
@@ -1685,13 +1833,13 @@ def handle_custom_size_text(message: Message) -> None:
         bot.reply_to(
             message,
             "📎 <b>Онлайн-конвертер:</b> отправьте любую картинку (фото или файл без сжатия), чтобы получить готовый <code>.eps</code> с контуром реза.\n"
-            "📐 <b>Любой размер без ограничений:</b> напишите желаемый размер, например: <code>8.5 см</code>, <code>120 мм</code>, <code>2.5 м</code> или <code>12x8 см</code>.\n"
+            "📐 <b>Размер макета:</b> напишите желаемый размер, например: <code>8.5 см</code>, <code>120 мм</code>, <code>1.2 м</code> или <code>12x8 см</code> (до 1370 мм).\n"
             "📦 <b>Готовые стикерпаки:</b> нажмите кнопку ниже, чтобы выбрать готовые макеты из базы!",
             reply_markup=kb,
         )
         return
 
-    size_mm = parsed[0]
+    size_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[0]))
 
     update_user_prefs(user.id, size_mm=size_mm, fit_a4_sheet=False)
     uinfo = record_user_activity(
@@ -1705,18 +1853,43 @@ def handle_custom_size_text(message: Message) -> None:
     last_jid = uinfo.get("last_job_id", "")
     job_dir = JOBS_DIR / last_jid if last_jid else None
     if job_dir and job_dir.exists() and (job_dir / "meta.json").exists():
+        meta = load_json_file(job_dir / "meta.json", {})
+        if not is_admin(user.id) and int(meta.get("user_id", 0)) != user.id:
+            bot.reply_to(message, "⛔ Это не ваш макет.")
+            return
+
+        can_convert, limit_reason = conversion_limiter.check_and_acquire_user_slot(user.id)
+        if not can_convert:
+            if limit_reason == "concurrent":
+                bot.reply_to(message, "⏳ У вас уже выполняется конвертация. Пожалуйста, дождитесь её завершения.")
+            else:
+                bot.reply_to(message, "⏳ Лимит: не более 6 конвертаций в минуту. Пожалуйста, подождите немного.")
+            return
+
         status_msg = bot.reply_to(
             message,
             f"📐 Установлен размер <b>{size_mm:g} мм ({size_mm/10.0:g} см)</b>. Пересчитываю ваш последний макет...",
         )
-        process_and_send_job(
-            chat_id=message.chat.id,
-            user_id=user.id,
-            job_dir=job_dir,
-            status_msg_id=status_msg.message_id,
-            was_compressed_photo=False,
-            action_title=f"Размер {size_mm:g} мм",
-        )
+
+        def on_queue_single() -> None:
+            try:
+                bot.edit_message_text(
+                    "⏳ <b>Сервер занят.</b> Макет в очереди на обработку...",
+                    chat_id=message.chat.id,
+                    message_id=status_msg.message_id,
+                )
+            except Exception:
+                pass
+
+        with conversion_limiter.run_conversion_slot(user.id, on_queued=on_queue_single):
+            process_and_send_job(
+                chat_id=message.chat.id,
+                user_id=user.id,
+                job_dir=job_dir,
+                status_msg_id=status_msg.message_id,
+                was_compressed_photo=False,
+                action_title=f"Размер {size_mm:g} мм",
+            )
     else:
         bot.reply_to(
             message,
@@ -1740,7 +1913,11 @@ def handle_media(message: Message) -> None:
 
     if message.content_type == "photo":
         was_compressed_photo = True
-        file_id = message.photo[-1].file_id
+        photo_obj = message.photo[-1]
+        if photo_obj.file_size and photo_obj.file_size > MAX_UPLOAD_MB * 1024 * 1024:
+            bot.reply_to(message, f"⛔ Файл слишком большой. Максимальный размер загрузки: {MAX_UPLOAD_MB:g} МБ.")
+            return
+        file_id = photo_obj.file_id
         orig_filename = f"photo_{int(time.time())}.jpg"
     elif message.content_type == "document":
         doc = message.document
@@ -1752,8 +1929,19 @@ def handle_media(message: Message) -> None:
                 f"⚠️ Формат <code>{html.escape(ext)}</code> не поддерживается.\nОтправьте изображение: JPG, PNG, WebP, BMP или TIFF.",
             )
             return
+        if doc.file_size and doc.file_size > MAX_UPLOAD_MB * 1024 * 1024:
+            bot.reply_to(message, f"⛔ Файл слишком большой. Максимальный размер загрузки: {MAX_UPLOAD_MB:g} МБ.")
+            return
         file_id = doc.file_id
     else:
+        return
+
+    can_convert, limit_reason = conversion_limiter.check_and_acquire_user_slot(user_id)
+    if not can_convert:
+        if limit_reason == "concurrent":
+            bot.reply_to(message, "⏳ У вас уже выполняется конвертация. Пожалуйста, дождитесь её завершения.")
+        else:
+            bot.reply_to(message, "⏳ Лимит: не более 6 конвертаций в минуту. Пожалуйста, подождите немного.")
         return
 
     # При загрузке нового макета сбрасываем тираж на 1 шт, пропорции на 1:1 и открываем главное меню
@@ -1794,6 +1982,10 @@ def handle_media(message: Message) -> None:
     try:
         file_info = bot.get_file(file_id)
         downloaded = bot.download_file(file_info.file_path)
+        if len(downloaded) > MAX_UPLOAD_MB * 1024 * 1024:
+            bot.reply_to(message, f"⛔ Файл слишком большой. Максимальный размер загрузки: {MAX_UPLOAD_MB:g} МБ.")
+            conversion_limiter.release_user_slot(user_id, record_completed=False)
+            return
 
         ext = Path(orig_filename).suffix.lower() or ".jpg"
         safe_stem = (
@@ -1814,24 +2006,52 @@ def handle_media(message: Message) -> None:
         }
         save_json_file(job_dir / "meta.json", meta)
 
-        process_and_send_job(
-            chat_id=chat_id,
-            user_id=user_id,
-            job_dir=job_dir,
-            status_msg_id=status_msg.message_id,
-            was_compressed_photo=was_compressed_photo,
-            action_title="Новая конвертация",
-        )
-    except Exception as exc:
-        traceback.print_exc()
+        def on_queue_media() -> None:
+            try:
+                bot.edit_message_text(
+                    "⏳ <b>Сервер занят.</b> Ваш макет в очереди на обработку...",
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                )
+            except Exception:
+                pass
+
+        with conversion_limiter.run_conversion_slot(user_id, on_queued=on_queue_media):
+            process_and_send_job(
+                chat_id=chat_id,
+                user_id=user_id,
+                job_dir=job_dir,
+                status_msg_id=status_msg.message_id,
+                was_compressed_photo=was_compressed_photo,
+                action_title="Новая конвертация",
+            )
+    except DecompressionBombError:
+        conversion_limiter.release_user_slot(user_id, record_completed=False)
+        logger.warning("DecompressionBombError in handle_media for user %s", user_id)
         bot.send_message(
             chat_id,
-            f"❌ <b>Ошибка при обработке файла:</b>\n<code>{html.escape(str(exc))}</code>",
+            "⚠️ <b>Файл слишком большой или повреждён (превышен лимит пикселей).</b>\n"
+            "Пожалуйста, уменьшите разрешение изображения.",
         )
+    except Exception as exc:
+        conversion_limiter.release_user_slot(user_id, record_completed=False)
+        logger.exception("Error in handle_media for user %s", user_id)
+        if is_admin(user_id):
+            bot.send_message(
+                chat_id,
+                f"❌ <b>Ошибка при обработке файла:</b>\n<code>{html.escape(str(exc))}</code>",
+            )
+        else:
+            bot.send_message(
+                chat_id,
+                "❌ <b>Не удалось обработать файл.</b>",
+            )
 
 
 @bot.callback_query_handler(func=lambda call: call.data and call.data.startswith("job:"))
 def handle_job_callback(call: CallbackQuery) -> None:
+    job_id = ""
+    user_id = 0
     try:
         user = call.from_user
         user_id = user.id
@@ -1846,11 +2066,23 @@ def handle_job_callback(call: CallbackQuery) -> None:
 
         _, job_id, param, val_str = parts
         chat_id = call.message.chat.id
+        job_dir = JOBS_DIR / job_id
+        meta_file = job_dir / "meta.json"
+
+        if not job_dir.exists() or not meta_file.exists():
+            bot.answer_callback_query(call.id, "⚠️ Исходный файл этой задачи уже очищен из кэша.")
+            return
+
+        meta = load_json_file(meta_file, {})
+        job_owner_id = int(meta.get("user_id", 0))
+        if not is_admin(user_id) and job_owner_id != user_id:
+            bot.answer_callback_query(call.id, "⛔ Это не ваш макет", show_alert=True)
+            return
 
         if param == "noop":
             bot.answer_callback_query(
                 call.id,
-                "💡 Вы также можете написать любой размер в чат (например: 15 см, 2 м или 20x10 см)",
+                "💡 Вы также можете написать любой размер в чат (например: 15 см, 1.2 м или 20x10 см)",
             )
             return
 
@@ -1858,8 +2090,6 @@ def handle_job_callback(call: CallbackQuery) -> None:
         if param == "nav":
             update_user_prefs(user_id, menu_tab=val_str)
             prefs = get_user_prefs(user_id)
-            jdir = JOBS_DIR / job_id
-            meta = load_json_file(jdir / "meta.json", {}) if jdir.exists() else {}
             a4_q = int((meta.get("pricing") or {}).get("a4_fit_qty", 1))
             new_kb = build_job_keyboard(
                 job_id,
@@ -1867,6 +2097,7 @@ def handle_job_callback(call: CallbackQuery) -> None:
                 in_hot_folder=bool(meta.get("in_hot_folder")),
                 a4_fit_qty=a4_q,
                 menu_tab=val_str,
+                hot_request_status=meta.get("hot_folder_request_status"),
             )
             try:
                 bot.edit_message_reply_markup(
@@ -1880,19 +2111,61 @@ def handle_job_callback(call: CallbackQuery) -> None:
             return
 
         if param == "hot":
-            dest = copy_job_to_hot_folder(job_id)
-            if dest is None:
-                bot.answer_callback_query(call.id, "⚠️ Файл .eps не найден", show_alert=True)
+            if is_admin(user_id) or ALLOW_USER_HOT_FOLDER:
+                dest = copy_job_to_hot_folder(job_id)
+                if dest is None:
+                    bot.answer_callback_query(call.id, "⚠️ Файл .eps не найден", show_alert=True)
+                    return
+                bot.answer_callback_query(call.id, "🚀 Отправлено в Hot Folder плоттера!")
+                bot.send_message(
+                    chat_id,
+                    f"🚀 <b>Макет отправлен на ПК с плоттером (Hot Folder)!</b>\n"
+                    f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
+                    f"📂 Сетевой путь Windows: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>\n"
+                    f"📂 Сетевой путь Mac: <code>smb://192.168.0.108/Roland_HotFolder/Queue_EPS/{html.escape(dest.name)}</code>",
+                )
                 return
-            bot.answer_callback_query(call.id, "🚀 Отправлено в Hot Folder плоттера!")
-            bot.send_message(
-                chat_id,
-                f"🚀 <b>Макет отправлен на ПК с плоттером (Hot Folder)!</b>\n"
-                f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
-                f"📂 Сетевой путь Windows: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>\n"
-                f"📂 Сетевой путь Mac: <code>smb://192.168.0.108/Roland_HotFolder/Queue_EPS/{html.escape(dest.name)}</code>",
-            )
-            return
+            else:
+                if meta.get("hot_folder_request_status") == "pending":
+                    bot.answer_callback_query(
+                        call.id, "Заявка уже ожидает подтверждения администратором", show_alert=True
+                    )
+                    return
+
+                meta["hot_folder_request_status"] = "pending"
+                meta["hot_folder_requested_at"] = time.time()
+                save_json_file(meta_file, meta)
+
+                bot.answer_callback_query(call.id, "Заявка отправлена на согласование администратору!")
+                bot.send_message(
+                    chat_id,
+                    "⏳ <b>Заявка на печать отправлена администратору!</b>\n"
+                    "После подтверждения макет будет автоматически отправлен на плоттер.",
+                )
+
+                kb = InlineKeyboardMarkup()
+                kb.row(
+                    InlineKeyboardButton("✅ Подтвердить", callback_data=f"hreq:{job_id}:approve"),
+                    InlineKeyboardButton("❌ Отклонить", callback_data=f"hreq:{job_id}:reject"),
+                )
+                user_name = user.username and f"@{user.username}" or f"{user.first_name} ({user_id})"
+                eps_name = f"{meta.get('orig_stem', 'sticker')}.eps"
+                w_mm = meta.get("width_mm", "?")
+                h_mm = meta.get("height_mm", "?")
+                qty = meta.get("nesting_qty", 1)
+                admin_text = (
+                    f"📥 <b>Заявка на отправку в Hot Folder</b>\n"
+                    f"👤 От: <b>{html.escape(str(user_name))}</b> (ID: <code>{user_id}</code>)\n"
+                    f"📄 Файл: <code>{html.escape(eps_name)}</code>\n"
+                    f"📐 Размер: <b>{w_mm} × {h_mm} мм</b> | Тираж: <b>{qty} шт.</b>\n"
+                    f"🆔 Задача: <code>{job_id}</code>"
+                )
+                for admin_id in ADMIN_IDS:
+                    try:
+                        bot.send_message(admin_id, admin_text, reply_markup=kb)
+                    except Exception as e:
+                        logger.warning("Failed to notify admin %s: %s", admin_id, e)
+                return
 
         curr_prefs = get_user_prefs(user_id)
         action_desc = "Пересчёт параметров"
@@ -1901,24 +2174,25 @@ def handle_job_callback(call: CallbackQuery) -> None:
             action_desc = f"Кант {val_str} мм"
             bot.answer_callback_query(call.id, f"Отступ изменён на {val_str} мм. Пересчитываю...")
         elif param == "sz":
-            update_user_prefs(user_id, size_mm=float(val_str), fit_a4_sheet=False, menu_tab="size")
-            action_desc = f"Размер {float(val_str)/10.0:g} см"
-            bot.answer_callback_query(call.id, f"Размер изменён на {float(val_str)/10.0:g} см. Пересчитываю...")
+            val_sz = max(MIN_SIZE_MM, min(MAX_SIZE_MM, float(val_str)))
+            update_user_prefs(user_id, size_mm=val_sz, fit_a4_sheet=False, menu_tab="size")
+            action_desc = f"Размер {val_sz/10.0:g} см"
+            bot.answer_callback_query(call.id, f"Размер изменён на {val_sz/10.0:g} см. Пересчитываю...")
         elif param == "dsz":
             delta_mm = float(val_str)
-            new_sz = max(5.0, round(float(curr_prefs.get("size_mm", 100.0)) + delta_mm, 1))
+            new_sz = max(MIN_SIZE_MM, min(MAX_SIZE_MM, round(float(curr_prefs.get("size_mm", 100.0)) + delta_mm, 1)))
             update_user_prefs(user_id, size_mm=new_sz, fit_a4_sheet=False, menu_tab="size")
             action_desc = f"Размер {new_sz/10.0:g} см"
             bot.answer_callback_query(call.id, f"Размер: {new_sz/10.0:g} см. Пересчитываю...")
         elif param == "stx":
             mult = float(val_str)
-            new_sx = max(0.05, round(float(curr_prefs.get("stretch_x", 1.0)) * mult, 4))
+            new_sx = max(MIN_STRETCH, min(MAX_STRETCH, round(float(curr_prefs.get("stretch_x", 1.0)) * mult, 4)))
             update_user_prefs(user_id, stretch_x=new_sx, menu_tab="stretch")
             action_desc = f"Ширина ×{new_sx:.3g}"
             bot.answer_callback_query(call.id, f"Масштаб ширины: ×{new_sx:.3g}. Пересчитываю...")
         elif param == "sty":
             mult = float(val_str)
-            new_sy = max(0.05, round(float(curr_prefs.get("stretch_y", 1.0)) * mult, 4))
+            new_sy = max(MIN_STRETCH, min(MAX_STRETCH, round(float(curr_prefs.get("stretch_y", 1.0)) * mult, 4)))
             update_user_prefs(user_id, stretch_y=new_sy, menu_tab="stretch")
             action_desc = f"Высота ×{new_sy:.3g}"
             bot.answer_callback_query(call.id, f"Масштаб высоты: ×{new_sy:.3g}. Пересчитываю...")
@@ -1971,29 +2245,127 @@ def handle_job_callback(call: CallbackQuery) -> None:
             last_job_id=job_id,
         )
 
-        job_dir = JOBS_DIR / job_id
-        if not job_dir.exists() or not (job_dir / "meta.json").exists():
-            bot.send_message(
-                chat_id,
-                "⚠️ Исходный файл этой задачи уже очищен из кэша. Пожалуйста, отправьте картинку ещё раз.",
-            )
+        can_convert, limit_reason = conversion_limiter.check_and_acquire_user_slot(user_id)
+        if not can_convert:
+            if limit_reason == "concurrent":
+                bot.answer_callback_query(
+                    call.id, "⏳ Предыдущая конвертация ещё выполняется. Пожалуйста, дождитесь завершения.", show_alert=True
+                )
+            else:
+                bot.answer_callback_query(
+                    call.id, "⏳ Лимит: не более 6 конвертаций в минуту. Пожалуйста, подождите.", show_alert=True
+                )
             return
 
         status_msg = bot.send_message(
             chat_id,
             f"🔄 <b>{action_desc}: пересчитываю EPS...</b>",
         )
-        process_and_send_job(
-            chat_id=chat_id,
-            user_id=user_id,
-            job_dir=job_dir,
-            status_msg_id=status_msg.message_id,
-            was_compressed_photo=False,
-            action_title=action_desc,
-        )
+
+        def on_queue_cb() -> None:
+            try:
+                bot.edit_message_text(
+                    f"⏳ <b>Сервер занят ({action_desc}).</b> Макет в очереди на обработку...",
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                )
+            except Exception:
+                pass
+
+        with conversion_limiter.run_conversion_slot(user_id, on_queued=on_queue_cb):
+            process_and_send_job(
+                chat_id=chat_id,
+                user_id=user_id,
+                job_dir=job_dir,
+                status_msg_id=status_msg.message_id,
+                was_compressed_photo=False,
+                action_title=action_desc,
+            )
     except Exception as exc:
-        traceback.print_exc()
-        bot.answer_callback_query(call.id, f"Ошибка: {exc}")
+        logger.exception("Error in handle_job_callback for job %s, user %s", job_id, user_id)
+        if is_admin(user_id):
+            bot.answer_callback_query(call.id, f"Ошибка: {exc}", show_alert=True)
+        else:
+            bot.answer_callback_query(call.id, "❌ Не удалось обработать файл", show_alert=True)
+
+
+@bot.callback_query_handler(func=lambda call: call.data and call.data.startswith("hreq:"))
+def handle_hot_folder_request_callback(call: CallbackQuery) -> None:
+    admin_user = call.from_user
+    if not is_admin(admin_user.id):
+        bot.answer_callback_query(call.id, "⛔ Только для администраторов", show_alert=True)
+        return
+
+    parts = call.data.split(":")
+    if len(parts) != 3:
+        bot.answer_callback_query(call.id, "Неверная команда")
+        return
+
+    _, job_id, action = parts
+    job_dir = JOBS_DIR / job_id
+    meta_file = job_dir / "meta.json"
+    if not meta_file.exists():
+        bot.answer_callback_query(call.id, "⚠️ Задача не найдена", show_alert=True)
+        return
+
+    meta = load_json_file(meta_file, {})
+    target_user_id = int(meta.get("user_id", 0))
+
+    if action == "approve":
+        dest = copy_job_to_hot_folder(job_id)
+        if dest is None:
+            bot.answer_callback_query(call.id, "⚠️ Файл .eps не найден", show_alert=True)
+            return
+        meta["hot_folder_request_status"] = "approved"
+        meta["hot_folder_approved_by"] = admin_user.id
+        save_json_file(meta_file, meta)
+
+        bot.answer_callback_query(call.id, "✅ Заявка одобрена!")
+        try:
+            admin_name = admin_user.first_name or str(admin_user.id)
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=f"✅ <b>Заявка одобрена</b> администратором {html.escape(admin_name)}!\n"
+                     f"Файл <code>{html.escape(dest.name)}</code> скопирован в Hot Folder.",
+            )
+        except Exception:
+            pass
+
+        if target_user_id:
+            try:
+                bot.send_message(
+                    target_user_id,
+                    f"🚀 <b>Администратор одобрил печать макета!</b>\n"
+                    f"📄 Файл отправлен на плоттер: <code>{html.escape(dest.name)}</code>",
+                )
+            except Exception as e:
+                logger.warning("Failed to notify user %s about approval: %s", target_user_id, e)
+
+    elif action == "reject":
+        meta["hot_folder_request_status"] = "rejected"
+        meta["hot_folder_rejected_by"] = admin_user.id
+        save_json_file(meta_file, meta)
+
+        bot.answer_callback_query(call.id, "❌ Заявка отклонена")
+        try:
+            admin_name = admin_user.first_name or str(admin_user.id)
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=f"❌ <b>Заявка отклонена</b> администратором {html.escape(admin_name)}.",
+            )
+        except Exception:
+            pass
+
+        if target_user_id:
+            try:
+                bot.send_message(
+                    target_user_id,
+                    f"❌ <b>Администратор отклонил отправку макета {job_id} в Hot Folder.</b>",
+                )
+            except Exception as e:
+                logger.warning("Failed to notify user %s about rejection: %s", target_user_id, e)
 
 
 # ==============================================================================

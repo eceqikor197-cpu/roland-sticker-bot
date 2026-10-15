@@ -1433,20 +1433,18 @@ def handle_start(message: Message) -> None:
 register_harvester_bot_handlers(bot, is_admin, is_user_banned)
 
 
-@bot.message_handler(content_types=["text"])
-def handle_custom_size_text(message: Message) -> None:
-    """Позволяет написать в чат размер ('8.5 см', '120 мм' или '12x8 см') или срочную тему (для админа)."""
-    raw_txt = (message.text or "").strip()
+def parse_size_text(text: str) -> Tuple[float, ...]:
+    """Разбирает текстовое описание размера стикера или габарита ШxВ в миллиметры.
+
+    Возвращает:
+      - (w_mm, h_mm) для прямоугольных габаритов вида '20x10 см', '150x90 мм', '2x1.5 м'
+      - (size_mm,) для одиночного размера вида '15 см', '150 мм', '2 м'
+      - () если текст не является корректным описанием размера
+    """
+    raw_txt = (text or "").strip()
     txt = raw_txt.lower()
     if txt.startswith("/"):
-        return
-    user = message.from_user
-    if is_user_banned(user.id):
-        return
-
-    if is_admin(user.id) and check_and_consume_waiting_topic(user.id):
-        enqueue_and_run_urgent_topic(bot, message.chat.id, raw_txt)
-        return
+        return ()
 
     # 1. Проверяем ввод вида ШxВ (например: '12x8 см', '12х8', '150x90 мм', '2x1.5 м') без ограничений размера!
     m_rect = re.match(
@@ -1465,7 +1463,44 @@ def handle_custom_size_text(message: Message) -> None:
             w_mm, h_mm = w_val, h_val
         w_mm = max(5.0, round(w_mm, 1))
         h_mm = max(5.0, round(h_mm, 1))
+        return (w_mm, h_mm)
 
+    # 2. Обычный ввод одной стороны ('8.5 см', '120 мм', '2.5 м' — без верхнего лимита!)
+    m = re.match(r"^(\d+(?:[.,]\d+)?)\s*(см|cm|мм|mm|м|m)?$", txt)
+    if m:
+        val = float(m.group(1).replace(",", "."))
+        unit = m.group(2) or "см"
+        if unit in ("м", "m"):
+            size_mm = val * 1000.0
+        elif unit in ("см", "cm"):
+            size_mm = val * 10.0
+        else:
+            size_mm = val
+        size_mm = max(5.0, round(size_mm, 1))
+        return (size_mm,)
+
+    return ()
+
+
+@bot.message_handler(content_types=["text"])
+def handle_custom_size_text(message: Message) -> None:
+    """Позволяет написать в чат размер ('8.5 см', '120 мм' или '12x8 см') или срочную тему (для админа)."""
+    raw_txt = (message.text or "").strip()
+    txt = raw_txt.lower()
+    if txt.startswith("/"):
+        return
+    user = message.from_user
+    if is_user_banned(user.id):
+        return
+
+    if is_admin(user.id) and check_and_consume_waiting_topic(user.id):
+        enqueue_and_run_urgent_topic(bot, message.chat.id, raw_txt)
+        return
+
+    parsed = parse_size_text(raw_txt)
+
+    if len(parsed) == 2:
+        w_mm, h_mm = parsed
         size_mm = max(w_mm, h_mm)
         uinfo = record_user_activity(
             user.id,
@@ -1520,9 +1555,7 @@ def handle_custom_size_text(message: Message) -> None:
             )
         return
 
-    # 2. Обычный ввод одной стороны ('8.5 см', '120 мм', '2.5 м' — без верхнего лимита!)
-    m = re.match(r"^(\d+(?:[.,]\d+)?)\s*(см|cm|мм|mm|м|m)?$", txt)
-    if not m:
+    if not parsed:
         kb = InlineKeyboardMarkup()
         kb.row(
             InlineKeyboardButton("📦 Открыть базу стикерпаков", callback_data="harv:home"),
@@ -1539,15 +1572,7 @@ def handle_custom_size_text(message: Message) -> None:
         )
         return
 
-    val = float(m.group(1).replace(",", "."))
-    unit = m.group(2) or "см"
-    if unit in ("м", "m"):
-        size_mm = val * 1000.0
-    elif unit in ("см", "cm"):
-        size_mm = val * 10.0
-    else:
-        size_mm = val
-    size_mm = max(5.0, round(size_mm, 1))
+    size_mm = parsed[0]
 
     update_user_prefs(user.id, size_mm=size_mm, fit_a4_sheet=False)
     uinfo = record_user_activity(

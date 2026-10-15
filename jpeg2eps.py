@@ -22,6 +22,7 @@ import argparse
 import datetime
 import io
 import math
+import os
 import re
 import struct
 import subprocess
@@ -34,11 +35,15 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
+from PIL.Image import DecompressionBombError
 from scipy import interpolate, ndimage
 import svg.path
 import vtracer
 
-Image.MAX_IMAGE_PIXELS = None
+MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "60000000"))
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+
+__all__ = ["DecompressionBombError", "MAX_IMAGE_PIXELS"]
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 MM_TO_PT = 72.0 / 25.4  # 1 мм = 2.83464567 пунктов PostScript
@@ -1167,13 +1172,13 @@ def calculate_nesting_and_price(
         rotated = True
         cols = cols_b
         rows = rows_b
-        cell_w_mm, cell_h_mm = item_h_mm, item_w_mm
+        cell_w_mm, _cell_h_mm = item_h_mm, item_w_mm
         used_len_mm = len_b
     else:
         rotated = False
         cols = cols_a
         rows = rows_a
-        cell_w_mm, cell_h_mm = item_w_mm, item_h_mm
+        cell_w_mm, _cell_h_mm = item_w_mm, item_h_mm
         used_len_mm = len_a
 
     actual_cols_first_row = min(qty, cols)
@@ -1482,7 +1487,7 @@ def convert_image_to_plotter_eps(
     base_w_mm = (float(ow) / base_longest_px) * max(1.0, float(size_mm))
     base_h_mm = (float(oh) / base_longest_px) * max(1.0, float(size_mm))
     target_obj_w_mm = base_w_mm * stretch_x
-    target_obj_h_mm = base_h_mm * stretch_y
+    _target_obj_h_mm = base_h_mm * stretch_y
 
     # Изменяем пропорцию пиксельной сетки только если соотношение stretch_x / stretch_y отличается от 1:1
     if abs(stretch_x - stretch_y) > 0.005 * max(stretch_x, stretch_y):
@@ -1684,7 +1689,7 @@ def convert_image_to_plotter_eps(
     nesting_qty = max(1, int(nesting_qty))
     if not fit_a4_sheet and nesting_qty > 1 and lossless_rgb_for_eps is not None:
         item_w_mm = canvas_w / px_per_mm
-        item_h_mm = canvas_h / px_per_mm
+        _item_h_mm = canvas_h / px_per_mm
         gap_mm = 3.0
         usable_roll_mm = max(item_w_mm, float(roll_width_mm) - 10.0)
         cols = max(1, int((usable_roll_mm + gap_mm) // (item_w_mm + gap_mm)))

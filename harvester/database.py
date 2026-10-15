@@ -18,7 +18,16 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from harvester.config import DB_PATH, PHASH_HAMMING_THRESHOLD
+from harvester.config import DB_PATH, HARVESTER_ENABLED, PHASH_HAMMING_THRESHOLD
+
+ALLOWED_LICENSES = ("own", "licensed", "cc0", "unknown")
+
+LICENSE_LABELS = {
+    "own": "Собственный макет",
+    "licensed": "Лицензированный макет",
+    "cc0": "Общественное достояние (CC0)",
+    "unknown": "Лицензия не подтверждена",
+}
 
 _db_lock = threading.RLock()
 
@@ -40,6 +49,19 @@ def slugify_folder(name: str) -> str:
 
 def url_to_hash(url: str) -> str:
     return hashlib.sha1(url.strip().encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _migrate_assets_table(conn: sqlite3.Connection) -> None:
+    """Безопасная миграция таблицы assets: проверка наличия колонок и добавление при отсутствии."""
+    cursor = conn.execute("PRAGMA table_info(assets)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    if "source_url" not in existing_columns:
+        conn.execute("ALTER TABLE assets ADD COLUMN source_url TEXT NOT NULL DEFAULT ''")
+    if "license" not in existing_columns:
+        conn.execute("ALTER TABLE assets ADD COLUMN license TEXT NOT NULL DEFAULT 'unknown'")
+    if "uploaded_by" not in existing_columns:
+        conn.execute("ALTER TABLE assets ADD COLUMN uploaded_by TEXT NOT NULL DEFAULT ''")
 
 
 def init_db() -> None:
@@ -107,7 +129,9 @@ def init_db() -> None:
                     asset_type TEXT NOT NULL,
                     title TEXT NOT NULL,
                     source_name TEXT NOT NULL,
-                    source_url TEXT NOT NULL,
+                    source_url TEXT NOT NULL DEFAULT '',
+                    license TEXT NOT NULL DEFAULT 'unknown',
+                    uploaded_by TEXT NOT NULL DEFAULT '',
                     phash_hex TEXT NOT NULL,
                     width_px INTEGER NOT NULL DEFAULT 0,
                     height_px INTEGER NOT NULL DEFAULT 0,
@@ -134,13 +158,14 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_assets_created ON assets(created_at DESC);
                 """
             )
+            _migrate_assets_table(conn)
             conn.commit()
         finally:
             conn.close()
 
     # Устанавливаем дефолтные значения состояния, если их ещё нет
     defaults = {
-        "enabled": True,
+        "enabled": bool(HARVESTER_ENABLED),
         "status_text": "Готов к работе",
         "current_topic": "—",
         "current_category": "—",
@@ -445,6 +470,12 @@ def record_phash(phash_hex: str, status: str = "accepted", asset_id: str = "") -
 
 
 def register_asset(asset: Dict[str, Any]) -> None:
+    lic = str(asset.get("license", "unknown")).lower().strip()
+    if lic not in ALLOWED_LICENSES:
+        lic = "unknown"
+    uploaded_by = str(asset.get("uploaded_by", "")).strip()
+    source_url = str(asset.get("source_url", "")).strip()
+
     with _db_lock:
         conn = get_conn()
         try:
@@ -452,7 +483,7 @@ def register_asset(asset: Dict[str, Any]) -> None:
                 """
                 INSERT OR REPLACE INTO assets(
                     asset_id, topic_id, category_lvl1, category_lvl2, folder_slug,
-                    topic_name, asset_type, title, source_name, source_url, phash_hex,
+                    topic_name, asset_type, title, source_name, source_url, license, uploaded_by, phash_hex,
                     width_px, height_px, width_mm, height_mm, offset_mm, perf_cut_mode,
                     num_contours, eps_size_mb, rel_folder_path, eps_filename, png_filename,
                     local_eps_path, local_png_path, local_preview_path, gdrive_folder_path,
@@ -460,7 +491,7 @@ def register_asset(asset: Dict[str, Any]) -> None:
                 )
                 VALUES (
                     :asset_id, :topic_id, :category_lvl1, :category_lvl2, :folder_slug,
-                    :topic_name, :asset_type, :title, :source_name, :source_url, :phash_hex,
+                    :topic_name, :asset_type, :title, :source_name, :source_url, :license, :uploaded_by, :phash_hex,
                     :width_px, :height_px, :width_mm, :height_mm, :offset_mm, :perf_cut_mode,
                     :num_contours, :eps_size_mb, :rel_folder_path, :eps_filename, :png_filename,
                     :local_eps_path, :local_png_path, :local_preview_path, :gdrive_folder_path,
@@ -477,7 +508,9 @@ def register_asset(asset: Dict[str, Any]) -> None:
                     "asset_type": asset["asset_type"],
                     "title": asset.get("title", asset["eps_filename"]),
                     "source_name": asset.get("source_name", "web"),
-                    "source_url": asset.get("source_url", ""),
+                    "source_url": source_url,
+                    "license": lic,
+                    "uploaded_by": uploaded_by,
                     "phash_hex": asset.get("phash_hex", ""),
                     "width_px": int(asset.get("width_px", 0)),
                     "height_px": int(asset.get("height_px", 0)),

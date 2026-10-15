@@ -1,0 +1,2170 @@
+{
+  "version": "1.0",
+  "tolerance_mm": 0.01,
+  "conversions": [
+    {
+      "val_mm": 0.0,
+      "scale": 1.0,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 1.0,
+      "expected_px": 10.0,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 1.0,
+      "expected_px": 25.4,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 1.0,
+      "expected_px": 50.0,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 1.0,
+      "expected_px": 100.0,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 1.0,
+      "expected_px": 304.1,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 1.0,
+      "expected_px": 214.9,
+      "expected_mm": 214.9
+    },
+    {
+      "val_mm": 0.0,
+      "scale": 2.54,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 2.54,
+      "expected_px": 25.4,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 2.54,
+      "expected_px": 64.516,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 2.54,
+      "expected_px": 127.0,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 2.54,
+      "expected_px": 254.0,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 2.54,
+      "expected_px": 772.414,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 2.54,
+      "expected_px": 545.846,
+      "expected_mm": 214.9
+    },
+    {
+      "val_mm": 0.0,
+      "scale": 3.779528,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 3.779528,
+      "expected_px": 37.795276,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 3.779528,
+      "expected_px": 96.0,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 3.779528,
+      "expected_px": 188.976378,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 3.779528,
+      "expected_px": 377.952756,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 3.779528,
+      "expected_px": 1149.354331,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 3.779528,
+      "expected_px": 812.220472,
+      "expected_mm": 214.9
+    },
+    {
+      "val_mm": 0.0,
+      "scale": 10.0,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 10.0,
+      "expected_px": 100.0,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 10.0,
+      "expected_px": 254.0,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 10.0,
+      "expected_px": 500.0,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 10.0,
+      "expected_px": 1000.0,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 10.0,
+      "expected_px": 3041.0,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 10.0,
+      "expected_px": 2149.0,
+      "expected_mm": 214.9
+    },
+    {
+      "val_mm": 0.0,
+      "scale": 0.5,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 0.5,
+      "expected_px": 5.0,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 0.5,
+      "expected_px": 12.7,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 0.5,
+      "expected_px": 25.0,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 0.5,
+      "expected_px": 50.0,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 0.5,
+      "expected_px": 152.05,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 0.5,
+      "expected_px": 107.45,
+      "expected_mm": 214.9
+    },
+    {
+      "val_mm": 0.0,
+      "scale": 4.0,
+      "expected_px": 0.0,
+      "expected_mm": 0.0
+    },
+    {
+      "val_mm": 10.0,
+      "scale": 4.0,
+      "expected_px": 40.0,
+      "expected_mm": 10.0
+    },
+    {
+      "val_mm": 25.4,
+      "scale": 4.0,
+      "expected_px": 101.6,
+      "expected_mm": 25.4
+    },
+    {
+      "val_mm": 50.0,
+      "scale": 4.0,
+      "expected_px": 200.0,
+      "expected_mm": 50.0
+    },
+    {
+      "val_mm": 100.0,
+      "scale": 4.0,
+      "expected_px": 400.0,
+      "expected_mm": 100.0
+    },
+    {
+      "val_mm": 304.1,
+      "scale": 4.0,
+      "expected_px": 1216.4,
+      "expected_mm": 304.1
+    },
+    {
+      "val_mm": 214.9,
+      "scale": 4.0,
+      "expected_px": 859.6,
+      "expected_mm": 214.9
+    }
+  ],
+  "rotations": [
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 0.0,
+      "expected_rx": 10.0,
+      "expected_ry": 20.0
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 90.0,
+      "expected_rx": 0.0,
+      "expected_ry": 10.0
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 180.0,
+      "expected_rx": 10.0,
+      "expected_ry": 0.0
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 270.0,
+      "expected_rx": 20.0,
+      "expected_ry": 10.0
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 360.0,
+      "expected_rx": 10.0,
+      "expected_ry": 20.0
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 37.0,
+      "expected_rx": 3.98185,
+      "expected_ry": 17.986355
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": -15.0,
+      "expected_rx": 12.58819,
+      "expected_ry": 19.659258
+    },
+    {
+      "x": 10.0,
+      "y": 20.0,
+      "cx": 10.0,
+      "cy": 10.0,
+      "angle_deg": 359.0,
+      "expected_rx": 10.174524,
+      "expected_ry": 19.998477
+    },
+    {
+      "x": 0.0,
+      "y": 0.0,
+      "cx": 0.0,
+      "cy": 0.0,
+      "angle_deg": 45.0,
+      "expected_rx": 0.0,
+      "expected_ry": 0.0
+    },
+    {
+      "x": 50.0,
+      "y": 50.0,
+      "cx": 0.0,
+      "cy": 0.0,
+      "angle_deg": 90.0,
+      "expected_rx": -50.0,
+      "expected_ry": 50.0
+    },
+    {
+      "x": 100.0,
+      "y": 150.0,
+      "cx": 50.0,
+      "cy": 50.0,
+      "angle_deg": -90.0,
+      "expected_rx": 150.0,
+      "expected_ry": 0.0
+    },
+    {
+      "x": 15.0,
+      "y": 25.0,
+      "cx": 30.0,
+      "cy": 40.0,
+      "angle_deg": 720.0,
+      "expected_rx": 15.0,
+      "expected_ry": 25.0
+    }
+  ],
+  "cases": [
+    {
+      "id": "case_01_air_13",
+      "description": "Air 13: центр, 0 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            122.05,
+            87.45
+          ],
+          [
+            182.05,
+            87.45
+          ],
+          [
+            182.05,
+            127.45
+          ],
+          [
+            122.05,
+            127.45
+          ]
+        ],
+        "bbox_mm": [
+          122.05,
+          87.45,
+          182.05,
+          127.45
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_02_air_13",
+      "description": "Air 13: центр, 90 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 90.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            172.05,
+            77.45
+          ],
+          [
+            172.05,
+            137.45
+          ],
+          [
+            132.05,
+            137.45
+          ],
+          [
+            132.05,
+            77.45
+          ]
+        ],
+        "bbox_mm": [
+          132.05,
+          77.45,
+          172.05,
+          137.45
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_03_air_13",
+      "description": "Air 13: центр, 180 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 180.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            182.05,
+            127.45
+          ],
+          [
+            122.05,
+            127.45
+          ],
+          [
+            122.05,
+            87.45
+          ],
+          [
+            182.05,
+            87.45
+          ]
+        ],
+        "bbox_mm": [
+          122.05,
+          87.45,
+          182.05,
+          127.45
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_04_air_13",
+      "description": "Air 13: центр, 270 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 270.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            132.05,
+            137.45
+          ],
+          [
+            132.05,
+            77.45
+          ],
+          [
+            172.05,
+            77.45
+          ],
+          [
+            172.05,
+            137.45
+          ]
+        ],
+        "bbox_mm": [
+          132.05,
+          77.45,
+          172.05,
+          137.45
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_05_air_13",
+      "description": "Air 13: центр, 37 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 37.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            140.127235,
+            73.422839
+          ],
+          [
+            188.045366,
+            109.53174
+          ],
+          [
+            163.972765,
+            141.477161
+          ],
+          [
+            116.054634,
+            105.36826
+          ]
+        ],
+        "bbox_mm": [
+          116.054634,
+          73.422839,
+          188.045366,
+          141.477161
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_06_air_13",
+      "description": "Air 13: центр, -15 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": -15.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            117.895844,
+            95.896055
+          ],
+          [
+            175.851394,
+            80.366912
+          ],
+          [
+            186.204156,
+            119.003945
+          ],
+          [
+            128.248606,
+            134.533088
+          ]
+        ],
+        "bbox_mm": [
+          117.895844,
+          80.366912,
+          186.204156,
+          134.533088
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_07_air_13",
+      "description": "Air 13: центр, 359 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 107.45,
+        "w_mm": 60.0,
+        "h_mm": 40.0,
+        "angle_deg": 359.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            121.705521,
+            87.976618
+          ],
+          [
+            181.696383,
+            86.929474
+          ],
+          [
+            182.394479,
+            126.923382
+          ],
+          [
+            122.403617,
+            127.970526
+          ]
+        ],
+        "bbox_mm": [
+          121.705521,
+          86.929474,
+          182.394479,
+          127.970526
+        ],
+        "center_px": [
+          574.677165,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_08_air_13",
+      "description": "Масштаб 1.0",
+      "scale": 1.0,
+      "sticker": {
+        "cx_mm": 100.0,
+        "cy_mm": 100.0,
+        "w_mm": 50.0,
+        "h_mm": 30.0,
+        "angle_deg": 15.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            79.73414,
+            79.040636
+          ],
+          [
+            128.030431,
+            91.981589
+          ],
+          [
+            120.26586,
+            120.959364
+          ],
+          [
+            71.969569,
+            108.018411
+          ]
+        ],
+        "bbox_mm": [
+          71.969569,
+          79.040636,
+          128.030431,
+          120.959364
+        ],
+        "center_px": [
+          100.0,
+          100.0
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_09_air_13",
+      "description": "Масштаб 2.54",
+      "scale": 2.54,
+      "sticker": {
+        "cx_mm": 100.0,
+        "cy_mm": 100.0,
+        "w_mm": 50.0,
+        "h_mm": 30.0,
+        "angle_deg": 15.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            79.73414,
+            79.040636
+          ],
+          [
+            128.030431,
+            91.981589
+          ],
+          [
+            120.26586,
+            120.959364
+          ],
+          [
+            71.969569,
+            108.018411
+          ]
+        ],
+        "bbox_mm": [
+          71.969569,
+          79.040636,
+          128.030431,
+          120.959364
+        ],
+        "center_px": [
+          254.0,
+          254.0
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_10_air_13",
+      "description": "Масштаб 10.0",
+      "scale": 10.0,
+      "sticker": {
+        "cx_mm": 100.0,
+        "cy_mm": 100.0,
+        "w_mm": 50.0,
+        "h_mm": 30.0,
+        "angle_deg": 15.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            79.73414,
+            79.040636
+          ],
+          [
+            128.030431,
+            91.981589
+          ],
+          [
+            120.26586,
+            120.959364
+          ],
+          [
+            71.969569,
+            108.018411
+          ]
+        ],
+        "bbox_mm": [
+          71.969569,
+          79.040636,
+          128.030431,
+          120.959364
+        ],
+        "center_px": [
+          1000.0,
+          1000.0
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_11_air_13",
+      "description": "Верхний левый квадрант, внутри",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 25.0,
+        "cy_mm": 25.0,
+        "w_mm": 20.0,
+        "h_mm": 20.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            15.0,
+            15.0
+          ],
+          [
+            35.0,
+            15.0
+          ],
+          [
+            35.0,
+            35.0
+          ],
+          [
+            15.0,
+            35.0
+          ]
+        ],
+        "bbox_mm": [
+          15.0,
+          15.0,
+          35.0,
+          35.0
+        ],
+        "center_px": [
+          94.488189,
+          94.488189
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_12_air_13",
+      "description": "Верхний правый квадрант, внутри",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 279.1,
+        "cy_mm": 25.0,
+        "w_mm": 20.0,
+        "h_mm": 20.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            269.1,
+            15.0
+          ],
+          [
+            289.1,
+            15.0
+          ],
+          [
+            289.1,
+            35.0
+          ],
+          [
+            269.1,
+            35.0
+          ]
+        ],
+        "bbox_mm": [
+          269.1,
+          15.0,
+          289.1,
+          35.0
+        ],
+        "center_px": [
+          1054.866142,
+          94.488189
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_13_air_13",
+      "description": "Нижний левый квадрант, внутри",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 25.0,
+        "cy_mm": 189.9,
+        "w_mm": 20.0,
+        "h_mm": 20.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            15.0,
+            179.9
+          ],
+          [
+            35.0,
+            179.9
+          ],
+          [
+            35.0,
+            199.9
+          ],
+          [
+            15.0,
+            199.9
+          ]
+        ],
+        "bbox_mm": [
+          15.0,
+          179.9,
+          35.0,
+          199.9
+        ],
+        "center_px": [
+          94.488189,
+          717.732283
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_14_air_13",
+      "description": "Нижний правый квадрант, внутри",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 279.1,
+        "cy_mm": 189.9,
+        "w_mm": 20.0,
+        "h_mm": 20.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            269.1,
+            179.9
+          ],
+          [
+            289.1,
+            179.9
+          ],
+          [
+            289.1,
+            199.9
+          ],
+          [
+            269.1,
+            199.9
+          ]
+        ],
+        "bbox_mm": [
+          269.1,
+          179.9,
+          289.1,
+          199.9
+        ],
+        "center_px": [
+          1054.866142,
+          717.732283
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_15_air_13",
+      "description": "Стикер в самом углу (0,0) вне скругления",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 2.0,
+        "cy_mm": 2.0,
+        "w_mm": 2.0,
+        "h_mm": 2.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            1.0,
+            1.0
+          ],
+          [
+            3.0,
+            1.0
+          ],
+          [
+            3.0,
+            3.0
+          ],
+          [
+            1.0,
+            3.0
+          ]
+        ],
+        "bbox_mm": [
+          1.0,
+          1.0,
+          3.0,
+          3.0
+        ],
+        "center_px": [
+          7.559055,
+          7.559055
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_16_air_13",
+      "description": "Стикер в правом верхнем углу вне скругления",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 302.1,
+        "cy_mm": 2.0,
+        "w_mm": 2.0,
+        "h_mm": 2.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            301.1,
+            1.0
+          ],
+          [
+            303.1,
+            1.0
+          ],
+          [
+            303.1,
+            3.0
+          ],
+          [
+            301.1,
+            3.0
+          ]
+        ],
+        "bbox_mm": [
+          301.1,
+          1.0,
+          303.1,
+          3.0
+        ],
+        "center_px": [
+          1141.795276,
+          7.559055
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_17_air_13",
+      "description": "Стикер в левом нижнем углу вне скругления",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 2.0,
+        "cy_mm": 212.9,
+        "w_mm": 2.0,
+        "h_mm": 2.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            1.0,
+            211.9
+          ],
+          [
+            3.0,
+            211.9
+          ],
+          [
+            3.0,
+            213.9
+          ],
+          [
+            1.0,
+            213.9
+          ]
+        ],
+        "bbox_mm": [
+          1.0,
+          211.9,
+          3.0,
+          213.9
+        ],
+        "center_px": [
+          7.559055,
+          804.661417
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_18_air_13",
+      "description": "Стикер в правом нижнем углу вне скругления",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 302.1,
+        "cy_mm": 212.9,
+        "w_mm": 2.0,
+        "h_mm": 2.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            301.1,
+            211.9
+          ],
+          [
+            303.1,
+            211.9
+          ],
+          [
+            303.1,
+            213.9
+          ],
+          [
+            301.1,
+            213.9
+          ]
+        ],
+        "bbox_mm": [
+          301.1,
+          211.9,
+          303.1,
+          213.9
+        ],
+        "center_px": [
+          1141.795276,
+          804.661417
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_19_air_13",
+      "description": "Выход за левую границу (min_x = -5)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 10.0,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            -5.0,
+            92.45
+          ],
+          [
+            25.0,
+            92.45
+          ],
+          [
+            25.0,
+            122.45
+          ],
+          [
+            -5.0,
+            122.45
+          ]
+        ],
+        "bbox_mm": [
+          -5.0,
+          92.45,
+          25.0,
+          122.45
+        ],
+        "center_px": [
+          37.795276,
+          406.110236
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_20_air_13",
+      "description": "Выход за правую границу (max_x = 310)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 295.0,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            280.0,
+            92.45
+          ],
+          [
+            310.0,
+            92.45
+          ],
+          [
+            310.0,
+            122.45
+          ],
+          [
+            280.0,
+            122.45
+          ]
+        ],
+        "bbox_mm": [
+          280.0,
+          92.45,
+          310.0,
+          122.45
+        ],
+        "center_px": [
+          1114.96063,
+          406.110236
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_21_air_13",
+      "description": "Выход за верхнюю границу (min_y = -5)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 10.0,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            137.05,
+            -5.0
+          ],
+          [
+            167.05,
+            -5.0
+          ],
+          [
+            167.05,
+            25.0
+          ],
+          [
+            137.05,
+            25.0
+          ]
+        ],
+        "bbox_mm": [
+          137.05,
+          -5.0,
+          167.05,
+          25.0
+        ],
+        "center_px": [
+          574.677165,
+          37.795276
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_22_air_13",
+      "description": "Выход за нижнюю границу (max_y = 220)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 152.05,
+        "cy_mm": 205.0,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            137.05,
+            190.0
+          ],
+          [
+            167.05,
+            190.0
+          ],
+          [
+            167.05,
+            220.0
+          ],
+          [
+            137.05,
+            220.0
+          ]
+        ],
+        "bbox_mm": [
+          137.05,
+          190.0,
+          167.05,
+          220.0
+        ],
+        "center_px": [
+          574.677165,
+          774.80315
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_23_air_13",
+      "description": "Касание границы: min_x = 1.0 (нарушает safe_margin)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 16.0,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            1.0,
+            92.45
+          ],
+          [
+            31.0,
+            92.45
+          ],
+          [
+            31.0,
+            122.45
+          ],
+          [
+            1.0,
+            122.45
+          ]
+        ],
+        "bbox_mm": [
+          1.0,
+          92.45,
+          31.0,
+          122.45
+        ],
+        "center_px": [
+          60.472441,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_24_air_13",
+      "description": "Касание границы: max_x = 303.1 (нарушает safe_margin)",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 288.1,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            273.1,
+            92.45
+          ],
+          [
+            303.1,
+            92.45
+          ],
+          [
+            303.1,
+            122.45
+          ],
+          [
+            273.1,
+            122.45
+          ]
+        ],
+        "bbox_mm": [
+          273.1,
+          92.45,
+          303.1,
+          122.45
+        ],
+        "center_px": [
+          1088.88189,
+          406.110236
+        ],
+        "is_inside": true,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_25_air_13",
+      "description": "Повернутый на 45 град стикер выходит за левый край",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 20.0,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 45.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            20.0,
+            86.236797
+          ],
+          [
+            41.213203,
+            107.45
+          ],
+          [
+            20.0,
+            128.663203
+          ],
+          [
+            -1.213203,
+            107.45
+          ]
+        ],
+        "bbox_mm": [
+          -1.213203,
+          86.236797,
+          41.213203,
+          128.663203
+        ],
+        "center_px": [
+          75.590551,
+          406.110236
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_26_air_13",
+      "description": "Повернутый на 45 град стикер выходит за правый край",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 284.1,
+        "cy_mm": 107.45,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 45.0
+      },
+      "object": {
+        "width_mm": 304.1,
+        "height_mm": 214.9,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            284.1,
+            86.236797
+          ],
+          [
+            305.313203,
+            107.45
+          ],
+          [
+            284.1,
+            128.663203
+          ],
+          [
+            262.886797,
+            107.45
+          ]
+        ],
+        "bbox_mm": [
+          262.886797,
+          86.236797,
+          305.313203,
+          128.663203
+        ],
+        "center_px": [
+          1073.76378,
+          406.110236
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_27_air_15",
+      "description": "Air 15: центр, 0 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 170.2,
+        "cy_mm": 118.8,
+        "w_mm": 80.0,
+        "h_mm": 50.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 340.4,
+        "height_mm": 237.6,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            130.2,
+            93.8
+          ],
+          [
+            210.2,
+            93.8
+          ],
+          [
+            210.2,
+            143.8
+          ],
+          [
+            130.2,
+            143.8
+          ]
+        ],
+        "bbox_mm": [
+          130.2,
+          93.8,
+          210.2,
+          143.8
+        ],
+        "center_px": [
+          643.275591,
+          449.007874
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_28_air_15",
+      "description": "Air 15: центр, 37 градусов, scale 2.54",
+      "scale": 2.54,
+      "sticker": {
+        "cx_mm": 170.2,
+        "cy_mm": 118.8,
+        "w_mm": 80.0,
+        "h_mm": 50.0,
+        "angle_deg": 37.0
+      },
+      "object": {
+        "width_mm": 340.4,
+        "height_mm": 237.6,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            153.299955,
+            74.761511
+          ],
+          [
+            217.190796,
+            122.906713
+          ],
+          [
+            187.100045,
+            162.838489
+          ],
+          [
+            123.209204,
+            114.693287
+          ]
+        ],
+        "bbox_mm": [
+          123.209204,
+          74.761511,
+          217.190796,
+          162.838489
+        ],
+        "center_px": [
+          432.308,
+          301.752
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_29_air_15",
+      "description": "Air 15: выход за правую границу",
+      "scale": 1.0,
+      "sticker": {
+        "cx_mm": 335.0,
+        "cy_mm": 118.8,
+        "w_mm": 30.0,
+        "h_mm": 30.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 340.4,
+        "height_mm": 237.6,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            320.0,
+            103.8
+          ],
+          [
+            350.0,
+            103.8
+          ],
+          [
+            350.0,
+            133.8
+          ],
+          [
+            320.0,
+            133.8
+          ]
+        ],
+        "bbox_mm": [
+          320.0,
+          103.8,
+          350.0,
+          133.8
+        ],
+        "center_px": [
+          335.0,
+          118.8
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_30_pro_14",
+      "description": "Pro 14: центр, -15 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 156.3,
+        "cy_mm": 110.6,
+        "w_mm": 70.0,
+        "h_mm": 45.0,
+        "angle_deg": -15.0
+      },
+      "object": {
+        "width_mm": 312.6,
+        "height_mm": 221.2,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            116.669168,
+            97.925335
+          ],
+          [
+            184.283975,
+            79.808002
+          ],
+          [
+            195.930832,
+            123.274665
+          ],
+          [
+            128.316025,
+            141.391998
+          ]
+        ],
+        "bbox_mm": [
+          116.669168,
+          79.808002,
+          195.930832,
+          141.391998
+        ],
+        "center_px": [
+          590.740157,
+          418.015748
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_31_pro_14",
+      "description": "Pro 14: центр, 359 градусов, scale 10.0",
+      "scale": 10.0,
+      "sticker": {
+        "cx_mm": 156.3,
+        "cy_mm": 110.6,
+        "w_mm": 70.0,
+        "h_mm": 45.0,
+        "angle_deg": 359.0
+      },
+      "object": {
+        "width_mm": 312.6,
+        "height_mm": 221.2,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            120.912652,
+            88.714261
+          ],
+          [
+            190.90199,
+            87.492593
+          ],
+          [
+            191.687348,
+            132.485739
+          ],
+          [
+            121.69801,
+            133.707407
+          ]
+        ],
+        "bbox_mm": [
+          120.912652,
+          87.492593,
+          191.687348,
+          133.707407
+        ],
+        "center_px": [
+          1563.0,
+          1106.0
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_32_pro_14",
+      "description": "Pro 14: выход за верхний край",
+      "scale": 1.0,
+      "sticker": {
+        "cx_mm": 156.3,
+        "cy_mm": 5.0,
+        "w_mm": 20.0,
+        "h_mm": 20.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 312.6,
+        "height_mm": 221.2,
+        "corner_radius_mm": 8.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            146.3,
+            -5.0
+          ],
+          [
+            166.3,
+            -5.0
+          ],
+          [
+            166.3,
+            15.0
+          ],
+          [
+            146.3,
+            15.0
+          ]
+        ],
+        "bbox_mm": [
+          146.3,
+          -5.0,
+          166.3,
+          15.0
+        ],
+        "center_px": [
+          156.3,
+          5.0
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    },
+    {
+      "id": "case_33_pro_16",
+      "description": "Pro 16: центр, большой стикер",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 177.85,
+        "cy_mm": 124.05,
+        "w_mm": 100.0,
+        "h_mm": 60.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 355.7,
+        "height_mm": 248.1,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            127.85,
+            94.05
+          ],
+          [
+            227.85,
+            94.05
+          ],
+          [
+            227.85,
+            154.05
+          ],
+          [
+            127.85,
+            154.05
+          ]
+        ],
+        "bbox_mm": [
+          127.85,
+          94.05,
+          227.85,
+          154.05
+        ],
+        "center_px": [
+          672.188976,
+          468.850394
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_34_pro_16",
+      "description": "Pro 16: центр, поворот 90 градусов",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 177.85,
+        "cy_mm": 124.05,
+        "w_mm": 100.0,
+        "h_mm": 60.0,
+        "angle_deg": 90.0
+      },
+      "object": {
+        "width_mm": 355.7,
+        "height_mm": 248.1,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            207.85,
+            74.05
+          ],
+          [
+            207.85,
+            174.05
+          ],
+          [
+            147.85,
+            174.05
+          ],
+          [
+            147.85,
+            74.05
+          ]
+        ],
+        "bbox_mm": [
+          147.85,
+          74.05,
+          207.85,
+          174.05
+        ],
+        "center_px": [
+          672.188976,
+          468.850394
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_35_pro_16",
+      "description": "Pro 16: малый стикер в углу",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 20.0,
+        "cy_mm": 20.0,
+        "w_mm": 15.0,
+        "h_mm": 15.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 355.7,
+        "height_mm": 248.1,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            12.5,
+            12.5
+          ],
+          [
+            27.5,
+            12.5
+          ],
+          [
+            27.5,
+            27.5
+          ],
+          [
+            12.5,
+            27.5
+          ]
+        ],
+        "bbox_mm": [
+          12.5,
+          12.5,
+          27.5,
+          27.5
+        ],
+        "center_px": [
+          75.590551,
+          75.590551
+        ],
+        "is_inside": true,
+        "is_inside_safe": true
+      }
+    },
+    {
+      "id": "case_36_pro_16",
+      "description": "Pro 16: стикер в углу вне скругления",
+      "scale": 3.779528,
+      "sticker": {
+        "cx_mm": 2.0,
+        "cy_mm": 2.0,
+        "w_mm": 15.0,
+        "h_mm": 15.0,
+        "angle_deg": 0.0
+      },
+      "object": {
+        "width_mm": 355.7,
+        "height_mm": 248.1,
+        "corner_radius_mm": 9.0,
+        "safe_margin_mm": 4.0
+      },
+      "expected": {
+        "polygon_mm": [
+          [
+            -5.5,
+            -5.5
+          ],
+          [
+            9.5,
+            -5.5
+          ],
+          [
+            9.5,
+            9.5
+          ],
+          [
+            -5.5,
+            9.5
+          ]
+        ],
+        "bbox_mm": [
+          -5.5,
+          -5.5,
+          9.5,
+          9.5
+        ],
+        "center_px": [
+          7.559055,
+          7.559055
+        ],
+        "is_inside": false,
+        "is_inside_safe": false
+      }
+    }
+  ]
+}

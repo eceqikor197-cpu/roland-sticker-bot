@@ -1,5 +1,16 @@
 """Пакет логики и обработчиков Telegram-бота Roland VP-540."""
 
+from bot.handlers_admin import (
+    handle_admin_callback,
+    handle_admin_command,
+    handle_custom_size_text,
+    handle_delete_my_data,
+    handle_privacy,
+    handle_spy_command,
+    handle_start,
+    parse_size_text,
+    register_admin_handlers,
+)
 from bot.jobs import (
     backfill_existing_jobs_and_users,
     cleanup_old_jobs,
@@ -32,12 +43,21 @@ __all__ = [
     "copy_job_to_hot_folder",
     "delete_user_data",
     "format_privacy_text",
+    "handle_admin_callback",
+    "handle_admin_command",
+    "handle_custom_size_text",
+    "handle_delete_my_data",
+    "handle_privacy",
+    "handle_spy_command",
+    "handle_start",
     "inspect_eps_stats",
     "is_admin",
     "list_all_jobs",
     "load_json_file",
     "notify_admins_about_job",
+    "parse_size_text",
     "process_and_send_job",
+    "register_admin_handlers",
     "run_cleanup_loop",
     "save_json_file",
     "send_or_edit_admin_feed_item",

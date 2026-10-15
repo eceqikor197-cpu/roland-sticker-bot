@@ -66,7 +66,7 @@ def set_license(
         h_conn = sqlite3.connect(f"file:{h_path.as_posix()}?mode=ro", uri=True)
         try:
             rows = h_conn.execute(
-                "SELECT asset_id FROM assets WHERE folder_slug = ?",
+                "SELECT asset_id FROM assets WHERE folder_slug = ? COLLATE NOCASE",
                 (topic_slug.strip(),),
             ).fetchall()
             target_ids = [str(r[0]) for r in rows]

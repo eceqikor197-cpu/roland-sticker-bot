@@ -73,15 +73,54 @@
   - `pytest -q` — 124 passed, 2 xfailed.
   - `ruff check .` — All checks passed.
 - **Осталось / открытые вопросы:**
-  - Переход к этапу S3: Вкусовой профиль и система рекомендаций (TF-IDF, гистограммы, MMR диверсификация, cold start).
+  - Реализовано в этапе S3.
+
+### Этап S3: Вкусовой профиль и система рекомендаций без аккаунтов
+- **Статус:** Завершён (ветка `feature/s3`)
+- **Сделано:**
+  - Создана миграция `sticker_app/migrations/002_features.sql`: таблицы `asset_features` (хранение L2-нормированных векторов в BLOB float32) и `feature_vocabularies` (словарь модели).
+  - Создан модуль построения признаков `sticker_app/features.py`:
+    - Архитектура Уровня A: нормированная конкатенация 4 блоков с весами:
+      - TF-IDF по тегам со сглаженным IDF ($\ln((N+1)/(DF+1)) + 1.0$), вес 0.5.
+      - One-hot вектор подкатегории и темы, вес 0.2.
+      - Цветовая 11-корзинная HSV-гистограмма по палитре (8 корзин оттенка + 3 ахроматических: черный/серый/белый), вес 0.2.
+      - Геометрические признаки (`aspect_norm` и `alpha_coverage`), вес 0.1.
+    - Итоговый вектор L2-нормирован ($||V||_2 = 1.0$), что позволяет рассчитывать косинусное сходство через быстрое скалярное произведение ($A \cdot B$).
+    - Создан интерфейс `EmbeddingProvider` и базовый `LevelAEmbeddingProvider` с прозрачным отбоем (fallback) при отсутствии нейросетевых зависимостей (Уровень B).
+  - Создана CLI-команда построения векторов `python -m sticker_app.build_features`: расчет векторов для всех доступных макетов и сохранение словаря в `app.db`.
+  - Создан движок рекомендаций `sticker_app/recommender.py`:
+    - Кэширование матрицы векторов в памяти процесса (`RecommenderEngine`).
+    - Farthest-Point Sampling (FPS) для карточек онбординга (`GET /api/v1/onboarding/cards`) с ограничением $\le 2$ на тему и адаптивным балансом.
+    - Построение вкусового профиля (`POST /api/v1/taste/profile`): $P = \text{norm}(\text{mean}(liked) - 0.5 \cdot \text{mean}(disliked))$ и извлечение топ-5 ассоциативных тегов.
+    - Ранжирование с диверсификацией Maximal Marginal Relevance (MMR, $\lambda=0.7$) по формуле $\arg\max [\lambda \cdot Sim(D_i, Q) - (1-\lambda) \cdot \max_{D_j \in S} Sim(D_i, D_j)]$ с ограничениями `max_per_topic` и `min_unique_topics`.
+    - Обработка холодного старта (Cold Start при $< 2$ лайков): подмешивание разнообразных тем, автоснижение $\lambda$ до $0.3 \dots 0.5$.
+  - Созданы новые Pydantic-модели в `sticker_app/models.py` (`TasteProfileRequest`, `TasteProfileResponse`, `RecommendConstraints`, `RecommendRequest`, `RecommendedSticker`, `RecommendResponse`) и реализованы эндпоинты в `sticker_app/main.py`.
+  - Обновлена OpenAPI-схема в `docs/openapi.json`.
+  - Создан скрипт оценки `scripts/eval_recommender.py`: расчет Intra-List Similarity (ILS), энтропии тем и Precision@K со сравнением Pure Cosine vs MMR.
+  - Составлена подробная математическая и архитектурная документация в `docs/RECOMMENDER.md`.
+  - Созданы тесты: `tests/app/test_features.py` (6 тестов) и `tests/app/test_recommender.py` (5 тестов), `tests/app/test_api_recommender.py` (4 теста).
+- **Результаты оценки (scripts/eval_recommender.py):**
+  - При переходе от Pure Cosine к MMR ($\lambda=0.7$):
+    - ILS (попарное сходство внутри выдачи) снижается с ~0.43 до ~0.17 (разнообразие возрастает более чем в 2 раза).
+    - Количество уникальных тем в топ-10 возрастает с 2 до 5 (полный охват тем).
+    - Энтропия тем возрастает с 0.971 до 2.171.
+    - В холодном старте (0 лайков) возвращается 5 уникальных тем с ILS 0.1735.
+- **Проверено:**
+  - `python scripts/eval_recommender.py` — расчет метрик и вывод отчета успешны.
+  - `python scripts/export_openapi.py` — OpenAPI контракт актуализирован.
+  - `pytest tests/app/ -v` — 37 passed.
+  - `pytest -q` — 139 passed, 2 xfailed.
+  - `ruff check .` — All checks passed.
+- **Осталось / открытые вопросы:**
+  - Переход к этапу S4: Объекты оклейки, геометрия и единицы измерения (Tech Specs макбуков, mm <-> px, golden vectors tests/golden/geometry.json, схема дизайна design.schema.json).
 
 ---
 
 ### Следующие этапы
-- **S3:** Вкусовой профиль и рекомендации (TF-IDF, MMR, холодный старт).
 - **S4:** Объекты, геометрия и единицы (Tech Specs макбуков, golden vectors).
 - **S5:** Фронтенд: холст-кастомайзер (React, Vite, Konva, Zustand).
 - **S6:** Онбординг вкуса и «Собрать с помощью ИИ» (раскладка с MMR).
 - **S7:** Экспорт для плоттера (лист резки, карта сборки, спот-цвет CutContour).
 - **S8:** Сохранение дизайнов, заказы и связка с плоттером.
 - **S9:** Усиление, развёртывание (Docker, Caddy, rate limiting, e2e).
+

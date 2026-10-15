@@ -21,6 +21,7 @@ import os
 import re
 import secrets
 import shutil
+import tempfile
 import threading
 import time
 import traceback
@@ -51,11 +52,19 @@ from jpeg2eps import (
 )
 from harvester.bot_integration import (
     check_and_consume_waiting_topic,
+    check_and_consume_waiting_upload,
     enqueue_and_run_urgent_topic,
-     register_harvester_bot_handlers,
+    register_harvester_bot_handlers,
+    register_manual_asset,
     render_harvester_web_catalog,
 )
-from harvester.database import get_asset, get_state, init_db, set_state
+from harvester.database import (
+    LICENSE_LABELS,
+    get_asset,
+    get_state,
+    init_db,
+    set_state,
+)
 from harvester.storage.rclone_sync import (
     copy_harvester_asset_to_hot_folder,
     ensure_local_eps_for_asset,
@@ -2214,6 +2223,60 @@ def handle_media(message: Message) -> None:
     else:
         return
 
+    # Проверяем, не ожидает ли админ ручную загрузку авторского макета в Harvester
+    upload_info = check_and_consume_waiting_upload(user_id) if is_admin(user_id) else None
+    if upload_info:
+        status_msg = bot.reply_to(message, "⏳ <b>Добавляю макет в каталог Harvester...</b>", parse_mode="HTML")
+        tmp_path = None
+        try:
+            file_info = bot.get_file(file_id)
+            downloaded = bot.download_file(file_info.file_path)
+            if len(downloaded) > MAX_UPLOAD_MB * 1024 * 1024:
+                bot.reply_to(message, f"⛔ Файл слишком большой. Максимальный размер загрузки: {MAX_UPLOAD_MB:g} МБ.")
+                return
+
+            ext = Path(orig_filename).suffix.lower() or ".png"
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp_file:
+                tmp_file.write(downloaded)
+                tmp_path = Path(tmp_file.name)
+
+            title = (message.caption or Path(orig_filename).stem or "Макет").strip()
+            lic = upload_info.get("license", "unknown")
+            topic = upload_info.get("topic", "Авторские макеты")
+
+            asset = register_manual_asset(
+                image_path=tmp_path,
+                title=title,
+                license_type=lic,
+                uploaded_by=user_id,
+                topic_name=topic,
+            )
+            lic_label = LICENSE_LABELS.get(asset.get("license", "unknown"), asset.get("license", "unknown"))
+            bot.edit_message_text(
+                f"✅ <b>Макет успешно добавлен в каталог Harvester!</b>\n\n"
+                f"🏷 <b>Название:</b> {html.escape(asset.get('title', ''))}\n"
+                f"📁 <b>Тематика:</b> {html.escape(asset.get('topic_name', ''))}\n"
+                f"⚖️ <b>Лицензия:</b> <code>{html.escape(lic_label)}</code>\n"
+                f"📏 <b>Размер:</b> {asset.get('width_mm', 0):.1f} × {asset.get('height_mm', 0):.1f} мм\n"
+                f"🆔 <code>{html.escape(asset.get('asset_id', ''))}</code>\n\n"
+                f"Файл сохранён в базе /harvester и готов к отправке на печать.",
+                chat_id=chat_id,
+                message_id=status_msg.message_id,
+                parse_mode="HTML",
+            )
+        except Exception as exc:
+            logger.exception("Failed to register manual asset: %s", exc)
+            bot.edit_message_text(
+                f"⚠️ Ошибка при добавлении макета: {html.escape(str(exc)[:200])}",
+                chat_id=chat_id,
+                message_id=status_msg.message_id,
+            )
+        finally:
+            if tmp_path and tmp_path.exists():
+                with contextlib.suppress(Exception):
+                    tmp_path.unlink()
+        return
+
     can_convert, limit_reason = conversion_limiter.check_and_acquire_user_slot(user_id)
     if not can_convert:
         if limit_reason == "concurrent":
@@ -3446,6 +3509,7 @@ if __name__ == "__main__":
                 BotCommand("delete_my_data", "🗑 Удалить все мои макеты и данные"),
                 BotCommand("harvester", "🚜 Автономный парсер базы 24/7 (Google Drive 5 ТБ)"),
                 BotCommand("parse", "🔥 Заказать срочный сбор стикерпака по теме"),
+                BotCommand("upload_asset", "📤 Загрузить авторский макет в базу с лицензией (Админ)"),
                 BotCommand("admin", "👑 Админ-панель (чужие работы, Hot Folder, статистика)"),
                 BotCommand("spy", "🔔 Включение/выключение Live-шпиона (Админ)"),
                 BotCommand("help", "Как отправлять макеты и собирать тиражи на рулон"),

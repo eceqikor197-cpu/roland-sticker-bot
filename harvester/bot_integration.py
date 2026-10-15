@@ -12,9 +12,12 @@ import threading
 import time
 import traceback
 import urllib.parse
+import shutil
+import uuid
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from PIL import Image
 import telebot
 from telebot.types import (
     CallbackQuery,
@@ -25,9 +28,12 @@ from telebot.types import (
 
 from harvester.config import (
     HARVESTER_ENABLED,
+    PREVIEWS_DIR,
     RCLONE_REMOTE,
+    STAGING_DIR,
 )
 from harvester.database import (
+    ALLOWED_LICENSES,
     LICENSE_LABELS,
     get_all_state,
     get_asset,
@@ -37,7 +43,9 @@ from harvester.database import (
     get_state,
     init_db,
     list_assets,
+    register_asset,
     set_state,
+    slugify_folder,
     upsert_topic,
 )
 from harvester.seeds import classify_user_topic, seed_database_if_needed
@@ -48,9 +56,14 @@ from harvester.storage.rclone_sync import (
     sync_staging_to_gdrive,
 )
 from harvester.worker import harvest_single_topic
+from jpeg2eps import convert_image_to_plotter_eps
 
 # Состояние ожидания ввода срочной темы от админа: {user_id: timestamp}
 _waiting_for_topic_input: Dict[int, float] = {}
+
+# Состояние ожидания ручной загрузки макета от админа: {user_id: {"license": str, "topic": str, "ts": float}}
+_waiting_for_manual_upload: Dict[int, Dict[str, Any]] = {}
+
 
 ASSET_TYPE_LABELS = {
     "pack_sheet": "📦 Лист-стикерпак",
@@ -596,12 +609,123 @@ def check_and_consume_waiting_topic(user_id: int) -> bool:
     return False
 
 
+def check_and_consume_waiting_upload(user_id: int) -> Optional[Dict[str, Any]]:
+    uid = int(user_id)
+    if uid in _waiting_for_manual_upload:
+        info = _waiting_for_manual_upload.pop(uid)
+        if time.time() - float(info.get("ts", 0)) < 600.0:
+            return info
+    return None
+
+
+def register_manual_asset(
+    image_path: Path,
+    title: str,
+    license_type: str,
+    uploaded_by: int | str,
+    topic_name: str = "Авторские макеты",
+    category_lvl1: str = "03_Одиночные_Стикеры",
+    category_lvl2: str = "Авторские",
+) -> Dict[str, Any]:
+    """Регистрирует авторский/лицензированный макет в каталоге Harvester."""
+    init_db()
+    lic = str(license_type).lower().strip()
+    if lic not in ALLOWED_LICENSES:
+        lic = "unknown"
+
+    folder_slug = slugify_folder(topic_name)
+    tid = upsert_topic(category_lvl1, category_lvl2, topic_name, [topic_name], priority=50)
+
+    aid = "man_" + uuid.uuid4().hex[:12]
+    rel_folder = f"{category_lvl1}/{category_lvl2}/{folder_slug}"
+    target_dir = STAGING_DIR / rel_folder
+    target_dir.mkdir(parents=True, exist_ok=True)
+    PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+
+    eps_filename = f"{aid}.eps"
+    png_filename = f"{aid}.png"
+    target_eps = target_dir / eps_filename
+    target_png = target_dir / png_filename
+    preview_jpg = PREVIEWS_DIR / f"{aid}.jpg"
+
+    shutil.copy2(image_path, target_png)
+
+    convert_image_to_plotter_eps(
+        input_path=target_png,
+        output_eps=target_eps,
+        size_mm=100.0,
+        offset_mm=2.5,
+        keep_background=False,
+    )
+
+    size_mb = round(target_eps.stat().st_size / (1024 * 1024), 2) if target_eps.exists() else 0.0
+    w_mm = 100.0
+    h_mm = 100.0
+    nc = 1
+    width_px = 0
+    height_px = 0
+
+    try:
+        with Image.open(target_png) as img:
+            width_px, height_px = img.size
+            if width_px > 0 and height_px > 0:
+                aspect = float(height_px) / float(width_px)
+                if aspect >= 1.0:
+                    h_mm = 100.0
+                    w_mm = round(100.0 / aspect, 1)
+                else:
+                    w_mm = 100.0
+                    h_mm = round(100.0 * aspect, 1)
+            rgb_img = img.convert("RGB")
+            rgb_img.thumbnail((400, 400))
+            rgb_img.save(preview_jpg, "JPEG", quality=85)
+    except Exception:
+        pass
+
+    asset_dict = {
+        "asset_id": aid,
+        "topic_id": tid,
+        "category_lvl1": category_lvl1,
+        "category_lvl2": category_lvl2,
+        "folder_slug": folder_slug,
+        "topic_name": topic_name,
+        "asset_type": "single_sticker",
+        "title": title or eps_filename,
+        "source_name": "manual_upload",
+        "source_url": "",
+        "license": lic,
+        "uploaded_by": str(uploaded_by),
+        "phash_hex": "",
+        "width_px": width_px,
+        "height_px": height_px,
+        "width_mm": w_mm,
+        "height_mm": h_mm,
+        "offset_mm": 2.5,
+        "perf_cut_mode": "none",
+        "num_contours": nc,
+        "eps_size_mb": size_mb,
+        "rel_folder_path": rel_folder,
+        "eps_filename": eps_filename,
+        "png_filename": png_filename,
+        "local_eps_path": str(target_eps),
+        "local_png_path": str(target_png),
+        "local_preview_path": str(preview_jpg),
+        "gdrive_folder_path": f"{RCLONE_REMOTE}/{rel_folder}",
+        "synced_to_gdrive": 0,
+        "in_hot_folder": 0,
+        "created_at": time.time(),
+    }
+    register_asset(asset_dict)
+    return asset_dict
+
+
+
 def register_harvester_bot_handlers(
     bot: telebot.TeleBot,
     is_admin_fn: Callable[[int], bool],
     is_banned_fn: Optional[Callable[[int], bool]] = None,
 ) -> None:
-    """Подключает команды /harvester, /parse и колбэки harv:* для пользователей бота."""
+    """Подключает команды /harvester, /parse, /upload_asset и колбэки harv:* для пользователей бота."""
 
     def _check_banned(uid: int) -> bool:
         return bool(is_banned_fn and is_banned_fn(uid))
@@ -645,6 +769,46 @@ def register_harvester_bot_handlers(
             )
             return
         enqueue_and_run_urgent_topic(bot, message.chat.id, parts[1].strip())
+
+    @bot.message_handler(commands=["upload_asset", "add_asset"])
+    def handle_upload_asset_cmd(message: Message) -> None:
+        uid = message.from_user.id
+        if not is_admin_fn(uid):
+            bot.reply_to(message, "⛔ Загрузка авторских макетов доступна только администратору.")
+            return
+        parts = (message.text or "").split(maxsplit=2)
+        if len(parts) >= 2 and parts[1].lower() in ALLOWED_LICENSES:
+            lic = parts[1].lower()
+            topic = parts[2].strip() if len(parts) >= 3 else "Авторские макеты"
+            _waiting_for_manual_upload[uid] = {"license": lic, "topic": topic, "ts": time.time()}
+            lbl = LICENSE_LABELS.get(lic, lic)
+            bot.reply_to(
+                message,
+                f"📤 Выбрана лицензия: <b>{html.escape(lbl)}</b>\n"
+                f"Тематика: <b>{html.escape(topic)}</b>\n\n"
+                f"Отправьте изображение (фото или документ PNG/JPG) следующим сообщением.",
+                parse_mode="HTML",
+            )
+            return
+
+        kb = InlineKeyboardMarkup(row_width=2)
+        btns = []
+        for lic_key in ALLOWED_LICENSES:
+            label = LICENSE_LABELS.get(lic_key, lic_key)
+            btns.append(InlineKeyboardButton(label, callback_data=f"harv:up_lic:{lic_key}"))
+        kb.add(*btns)
+        kb.add(InlineKeyboardButton("❌ Отмена", callback_data="harv:up_cancel"))
+        bot.reply_to(
+            message,
+            "📤 <b>Ручная загрузка авторского макета в каталог Harvester</b>\n\n"
+            "Выберите лицензию для загружаемого макета:\n"
+            "• <b>Собственный (own)</b> — личный дизайн или дизайн компании\n"
+            "• <b>Лицензия (licensed)</b> — купленный / согласованный с правообладателем\n"
+            "• <b>CC0 / Public Domain (cc0)</b> — свободное общественное достояние\n"
+            "• <b>Неизвестно (unknown)</b> — без прав (потребует подтверждения перед печатью)",
+            reply_markup=kb,
+            parse_mode="HTML",
+        )
 
     @bot.callback_query_handler(func=lambda call: call.data and call.data.startswith("harv:"))
     def handle_harv_callback(call: CallbackQuery) -> None:
@@ -694,6 +858,33 @@ def register_harvester_bot_handlers(
                     "🔥 <b>Заказ срочной темы вне очереди:</b>\n"
                     "Просто напишите следующим сообщением в чат название сериала, игры, аниме, марки авто или тематики (например: <code>Пацаны сериал</code>, <code>Subaru WRX</code>, <code>Человек-бензопила</code>):",
                 )
+                return
+
+            if action == "up_lic" and len(parts) >= 3:
+                if not is_admin_fn(uid):
+                    bot.answer_callback_query(call.id, "⛔ Доступно только администратору", show_alert=True)
+                    return
+                lic = parts[2].lower()
+                if lic not in ALLOWED_LICENSES:
+                    lic = "unknown"
+                _waiting_for_manual_upload[uid] = {"license": lic, "topic": "Авторские макеты", "ts": time.time()}
+                lbl = LICENSE_LABELS.get(lic, lic)
+                bot.answer_callback_query(call.id, f"Лицензия: {lbl}")
+                bot.send_message(
+                    chat_id,
+                    f"📤 Выбрана лицензия: <b>{html.escape(lbl)}</b>\n\n"
+                    f"Теперь отправьте изображение (фото или файл PNG/JPG) для добавления в каталог.",
+                    parse_mode="HTML",
+                )
+                return
+
+            if action == "up_cancel":
+                _waiting_for_manual_upload.pop(uid, None)
+                bot.answer_callback_query(call.id, "Отменено")
+                try:
+                    bot.delete_message(chat_id, call.message.message_id)
+                except Exception:
+                    pass
                 return
 
             if action == "cats":

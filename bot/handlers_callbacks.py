@@ -446,12 +446,6 @@ def handle_job_callback(call: CallbackQuery) -> None:
             _update_user_prefs(user_id, keep_background=use_bg)
             action_desc = "Изменён режим фона"
             bot.answer_callback_query(call.id, "Режим фона изменён. Пересчитываю...")
-        elif param == "vec":
-            meta["vectorize"] = False
-            storage_update_job(job_id, vectorize=0)
-            _update_user_prefs(user_id, vectorize=False)
-            action_desc = "Оригинальное качество"
-            bot.answer_callback_query(call.id, "Пересчитываю...")
 
         save_json_file(meta_file, meta)
 

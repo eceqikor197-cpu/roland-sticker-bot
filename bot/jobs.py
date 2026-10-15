@@ -350,7 +350,6 @@ def backfill_existing_jobs_and_users() -> None:
             j["offset_mm"] = up["offset_mm"]
             j["size_mm"] = up["size_mm"]
             j["keep_background"] = up["keep_background"]
-            j["vectorize"] = up["vectorize"]
             j["perf_cut_mode"] = up.get("perf_cut_mode", "none")
             j["nesting_qty"] = up.get("nesting_qty", 1)
             changed = True
@@ -473,7 +472,6 @@ def process_and_send_job(
             bg_tolerance=12.0,
             keep_background=keep_bg,
             no_cut_contour=False,
-            vectorize_artwork=False,
             also_svg=False,
             preview_png_path=preview_png,
             perf_cut_mode=perf_mode,
@@ -543,7 +541,6 @@ def process_and_send_job(
             "offset_mm": offset_mm,
             "size_mm": size_mm,
             "keep_background": keep_bg,
-            "vectorize": False,
             "perf_cut_mode": perf_mode,
             "perf_cut_passes": perf_passes,
             "nesting_qty": nesting_qty,

@@ -17,7 +17,6 @@ JOB_CORE_COLS = {
     "offset_mm",
     "size_mm",
     "keep_background",
-    "vectorize",
     "perf_cut_mode",
     "perf_cut_passes",
     "nesting_qty",
@@ -48,7 +47,6 @@ def _row_to_job(row: Any) -> Optional[Dict[str, Any]]:
     res["offset_mm"] = float(res.get("offset_mm", 2.5))
     res["size_mm"] = float(res.get("size_mm", 100.0))
     res["keep_background"] = bool(res.get("keep_background", 0))
-    res["vectorize"] = bool(res.get("vectorize", 0))
     res["perf_cut_mode"] = str(res.get("perf_cut_mode", "none"))
     res["perf_cut_passes"] = int(res.get("perf_cut_passes", 2))
     res["nesting_qty"] = int(res.get("nesting_qty", 1))
@@ -120,7 +118,6 @@ def save_job(meta: Dict[str, Any]) -> Dict[str, Any]:
         "offset_mm": float(meta.get("offset_mm", 2.5)),
         "size_mm": float(meta.get("size_mm", 100.0)),
         "keep_background": 1 if meta.get("keep_background") else 0,
-        "vectorize": 1 if meta.get("vectorize") else 0,
         "perf_cut_mode": str(meta.get("perf_cut_mode", "none")),
         "perf_cut_passes": int(meta.get("perf_cut_passes", 2)),
         "nesting_qty": int(meta.get("nesting_qty", 1)),
@@ -152,14 +149,14 @@ def save_job(meta: Dict[str, Any]) -> Dict[str, Any]:
             """
             INSERT INTO jobs (
                 job_id, user_id, orig_stem, input_filename, eps_filename,
-                offset_mm, size_mm, keep_background, vectorize, perf_cut_mode,
+                offset_mm, size_mm, keep_background, perf_cut_mode,
                 perf_cut_passes, nesting_qty, roll_width_mm, stretch_x, stretch_y,
                 fit_a4_sheet, menu_tab, num_contours, perf_contours, width_mm,
                 height_mm, in_hot_folder, hot_filename, hot_folder_request_status,
                 hot_folder_requested_at, pricing_json, extra_json, created_at, updated_at
             ) VALUES (
                 :job_id, :user_id, :orig_stem, :input_filename, :eps_filename,
-                :offset_mm, :size_mm, :keep_background, :vectorize, :perf_cut_mode,
+                :offset_mm, :size_mm, :keep_background, :perf_cut_mode,
                 :perf_cut_passes, :nesting_qty, :roll_width_mm, :stretch_x, :stretch_y,
                 :fit_a4_sheet, :menu_tab, :num_contours, :perf_contours, :width_mm,
                 :height_mm, :in_hot_folder, :hot_filename, :hot_folder_request_status,
@@ -172,7 +169,6 @@ def save_job(meta: Dict[str, Any]) -> Dict[str, Any]:
                 offset_mm = excluded.offset_mm,
                 size_mm = excluded.size_mm,
                 keep_background = excluded.keep_background,
-                vectorize = excluded.vectorize,
                 perf_cut_mode = excluded.perf_cut_mode,
                 perf_cut_passes = excluded.perf_cut_passes,
                 nesting_qty = excluded.nesting_qty,

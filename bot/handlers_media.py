@@ -314,7 +314,6 @@ def handle_media(message: Message) -> None:
         user_id,
         nesting_qty=1,
         keep_background=False,
-        vectorize=False,
         offset_mm=new_off,
         stretch_x=1.0,
         stretch_y=1.0,

@@ -12,7 +12,6 @@ DEFAULT_PREFS: Dict[str, Any] = {
     "offset_mm": 2.5,
     "size_mm": 100.0,
     "keep_background": False,
-    "vectorize": False,
     "perf_cut_mode": "none",
     "perf_cut_passes": 2,
     "nesting_qty": 1,
@@ -27,7 +26,6 @@ KNOWN_PREF_COLS = {
     "offset_mm",
     "size_mm",
     "keep_background",
-    "vectorize",
     "perf_cut_mode",
     "perf_cut_passes",
     "nesting_qty",
@@ -48,7 +46,7 @@ def _row_to_prefs(row: Any) -> Dict[str, Any]:
     row_dict = dict(row)
     for col in KNOWN_PREF_COLS:
         if col in row_dict and row_dict[col] is not None:
-            if col in ("keep_background", "vectorize", "fit_a4_sheet"):
+            if col in ("keep_background", "fit_a4_sheet"):
                 res[col] = bool(row_dict[col])
             elif col in ("offset_mm", "size_mm", "roll_width_mm", "stretch_x", "stretch_y"):
                 res[col] = float(row_dict[col])
@@ -66,8 +64,6 @@ def _row_to_prefs(row: Any) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Всегда используем растровый режим (vtracer отключён ради стабильности)
-    res["vectorize"] = False
     if float(res.get("roll_width_mm", 1370.0)) == 1000.0:
         res["roll_width_mm"] = 1370.0
     return res
@@ -100,7 +96,7 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
 
         for k, v in current.items():
             if k in KNOWN_PREF_COLS:
-                if k in ("keep_background", "vectorize", "fit_a4_sheet"):
+                if k in ("keep_background", "fit_a4_sheet"):
                     known_vals[k] = 1 if v else 0
                 else:
                     known_vals[k] = v
@@ -112,11 +108,11 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
         conn.execute(
             """
             INSERT INTO prefs (
-                user_id, offset_mm, size_mm, keep_background, vectorize,
+                user_id, offset_mm, size_mm, keep_background,
                 perf_cut_mode, perf_cut_passes, nesting_qty, roll_width_mm,
                 stretch_x, stretch_y, fit_a4_sheet, menu_tab, extra_json, updated_at
             ) VALUES (
-                :user_id, :offset_mm, :size_mm, :keep_background, :vectorize,
+                :user_id, :offset_mm, :size_mm, :keep_background,
                 :perf_cut_mode, :perf_cut_passes, :nesting_qty, :roll_width_mm,
                 :stretch_x, :stretch_y, :fit_a4_sheet, :menu_tab, :extra_json, :updated_at
             )
@@ -124,7 +120,6 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
                 offset_mm = excluded.offset_mm,
                 size_mm = excluded.size_mm,
                 keep_background = excluded.keep_background,
-                vectorize = excluded.vectorize,
                 perf_cut_mode = excluded.perf_cut_mode,
                 perf_cut_passes = excluded.perf_cut_passes,
                 nesting_qty = excluded.nesting_qty,
@@ -141,7 +136,6 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
                 "offset_mm": float(known_vals.get("offset_mm", 2.5)),
                 "size_mm": float(known_vals.get("size_mm", 100.0)),
                 "keep_background": int(known_vals.get("keep_background", 0)),
-                "vectorize": int(known_vals.get("vectorize", 0)),
                 "perf_cut_mode": str(known_vals.get("perf_cut_mode", "none")),
                 "perf_cut_passes": int(known_vals.get("perf_cut_passes", 2)),
                 "nesting_qty": int(known_vals.get("nesting_qty", 1)),

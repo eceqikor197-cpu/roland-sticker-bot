@@ -23,12 +23,9 @@ import datetime
 import io
 import math
 import os
-import re
 import struct
 import subprocess
 import sys
-import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -37,8 +34,6 @@ import numpy as np
 from PIL import Image, ImageOps
 from PIL.Image import DecompressionBombError
 from scipy import interpolate, ndimage
-import svg.path
-import vtracer
 
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "60000000"))
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
@@ -47,36 +42,6 @@ __all__ = ["DecompressionBombError", "MAX_IMAGE_PIXELS"]
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 MM_TO_PT = 72.0 / 25.4  # 1 мм = 2.83464567 пунктов PostScript
-
-
-def parse_hex_color(color_str: str) -> Optional[Tuple[float, float, float]]:
-    if not color_str:
-        return None
-    s = color_str.strip().lower()
-    if s in ("none", "transparent"):
-        return None
-    if s.startswith("#"):
-        hex_part = s[1:]
-        if len(hex_part) == 3:
-            return (
-                int(hex_part[0] * 2, 16) / 255.0,
-                int(hex_part[1] * 2, 16) / 255.0,
-                int(hex_part[2] * 2, 16) / 255.0,
-            )
-        elif len(hex_part) >= 6:
-            return (
-                int(hex_part[0:2], 16) / 255.0,
-                int(hex_part[2:4], 16) / 255.0,
-                int(hex_part[4:6], 16) / 255.0,
-            )
-    m = re.match(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", s)
-    if m:
-        return (
-            int(m.group(1)) / 255.0,
-            int(m.group(2)) / 255.0,
-            int(m.group(3)) / 255.0,
-        )
-    return (0.0, 0.0, 0.0)
 
 
 def load_original_image(image_path: Path) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -398,154 +363,6 @@ def _fit_periodic_cubic_bezier(
 
     return bezier_segments
 
-
-def vectorize_image_with_vtracer(
-    rgba_image: np.ndarray,
-    filter_speckle: int = 2,
-    color_precision: int = 8,
-    layer_difference: int = 8,
-) -> List[Tuple[Tuple[float, float, float], str]]:
-    """
-    Запускает многослойную цветную трассировку RGBA-изображения через vtracer (используется только при флаге --vectorize).
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        in_png = Path(tmpdir) / "input.png"
-        out_svg = Path(tmpdir) / "traced.svg"
-        Image.fromarray(rgba_image, mode="RGBA").save(in_png, format="PNG")
-
-        vtracer.convert_image_to_svg_py(
-            str(in_png),
-            str(out_svg),
-            colormode="color",
-            hierarchical="stacked",
-            mode="spline",
-            filter_speckle=filter_speckle,
-            color_precision=color_precision,
-            layer_difference=layer_difference,
-            corner_threshold=50,
-            length_threshold=3.5,
-            max_iterations=12,
-            splice_threshold=45,
-            path_precision=2,
-        )
-
-        svg_content = out_svg.read_text(encoding="utf-8")
-
-    return _parse_vtracer_svg_paths(svg_content)
-
-
-def _parse_vtracer_svg_paths(svg_text: str) -> List[Tuple[Tuple[float, float, float], str]]:
-    root = ET.fromstring(svg_text)
-    layers: List[Tuple[Tuple[float, float, float], str]] = []
-
-    for elem in root.iter():
-        tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-        if tag != "path":
-            continue
-        d_attr = elem.attrib.get("d", "").strip()
-        fill_attr = elem.attrib.get("fill", "#000000")
-        transform_attr = elem.attrib.get("transform", "")
-
-        rgb = parse_hex_color(fill_attr)
-        if rgb is None or not d_attr:
-            continue
-
-        tx, ty = 0.0, 0.0
-        if transform_attr:
-            m = re.search(
-                r"translate\(\s*([+-]?\d+(?:\.\d+)?)\s*(?:[\s,]\s*([+-]?\d+(?:\.\d+)?))?\s*\)",
-                transform_attr,
-            )
-            if m:
-                tx = float(m.group(1))
-                ty = float(m.group(2)) if m.group(2) is not None else 0.0
-
-        layers.append((rgb, _apply_translate_to_d(d_attr, tx, ty)))
-
-    return layers
-
-
-def _apply_translate_to_d(d_attr: str, tx: float, ty: float) -> str:
-    if abs(tx) < 1e-6 and abs(ty) < 1e-6:
-        return d_attr
-    return f"__TRANSLATE__({tx},{ty}):{d_attr}"
-
-
-def svg_d_to_postscript_commands(
-    d_with_meta: str, scale: float, height_pt: float
-) -> str:
-    tx, ty = 0.0, 0.0
-    d_str = d_with_meta
-    if d_str.startswith("__TRANSLATE__("):
-        prefix, d_str = d_str.split("):", 1)
-        coords = prefix[len("__TRANSLATE__(") :].split(",")
-        tx, ty = float(coords[0]), float(coords[1])
-
-    parsed_path = svg.path.parse_path(d_str)
-    ps_lines: List[str] = []
-    curr_end: Optional[complex] = None
-
-    def to_ps(pt: complex) -> Tuple[float, float]:
-        x = (pt.real + tx) * scale
-        y = height_pt - (pt.imag + ty) * scale
-        return x, y
-
-    for seg in parsed_path:
-        if isinstance(seg, svg.path.Move):
-            x, y = to_ps(seg.end)
-            ps_lines.append(f"{x:.3f} {y:.3f} m")
-            curr_end = seg.end
-        elif isinstance(seg, svg.path.Close):
-            ps_lines.append("cp")
-            curr_end = seg.end
-        elif isinstance(seg, svg.path.Line):
-            if curr_end != seg.start:
-                sx, sy = to_ps(seg.start)
-                ps_lines.append(f"{sx:.3f} {sy:.3f} m")
-            ex, ey = to_ps(seg.end)
-            ps_lines.append(f"{ex:.3f} {ey:.3f} l")
-            curr_end = seg.end
-        elif isinstance(seg, svg.path.CubicBezier):
-            if curr_end != seg.start:
-                sx, sy = to_ps(seg.start)
-                ps_lines.append(f"{sx:.3f} {sy:.3f} m")
-            c1x, c1y = to_ps(seg.control1)
-            c2x, c2y = to_ps(seg.control2)
-            ex, ey = to_ps(seg.end)
-            ps_lines.append(
-                f"{c1x:.3f} {c1y:.3f} {c2x:.3f} {c2y:.3f} {ex:.3f} {ey:.3f} c"
-            )
-            curr_end = seg.end
-        elif isinstance(seg, svg.path.QuadraticBezier):
-            if curr_end != seg.start:
-                sx, sy = to_ps(seg.start)
-                ps_lines.append(f"{sx:.3f} {sy:.3f} m")
-            p0 = seg.start
-            q1 = seg.control
-            p3 = seg.end
-            c1 = p0 + (2.0 / 3.0) * (q1 - p0)
-            c2 = p3 + (2.0 / 3.0) * (q1 - p3)
-            c1x, c1y = to_ps(c1)
-            c2x, c2y = to_ps(c2)
-            ex, ey = to_ps(p3)
-            ps_lines.append(
-                f"{c1x:.3f} {c1y:.3f} {c2x:.3f} {c2y:.3f} {ex:.3f} {ey:.3f} c"
-            )
-            curr_end = seg.end
-        elif isinstance(seg, svg.path.Arc):
-            if curr_end != seg.start:
-                sx, sy = to_ps(seg.start)
-                ps_lines.append(f"{sx:.3f} {sy:.3f} m")
-            steps = 12
-            for step_i in range(1, steps + 1):
-                pt = seg.point(step_i / float(steps))
-                px, py = to_ps(pt)
-                ps_lines.append(f"{px:.3f} {py:.3f} l")
-            curr_end = seg.end
-
-    return "\n".join(ps_lines)
-
-
 def bezier_loops_to_postscript(
     bezier_loops: List[List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float], Tuple[float, float]]]],
     scale: float,
@@ -632,7 +449,6 @@ def _loops_to_cv_polys(
 def render_preview_rgb(
     width_px: int,
     height_px: int,
-    vector_layers: List[Tuple[Tuple[float, float, float], str]],
     cut_bezier_loops: List[List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float], Tuple[float, float]]]],
     include_white_backing: bool = True,
     include_cut_contour: bool = True,
@@ -667,49 +483,6 @@ def render_preview_rgb(
             ).astype(np.uint8)
         else:
             canvas = lossless_rgb_artwork.copy()
-    else:
-        for rgb_val, d_with_meta in vector_layers:
-            tx, ty = 0.0, 0.0
-            d_str = d_with_meta
-            if d_str.startswith("__TRANSLATE__("):
-                prefix, d_str = d_str.split("):", 1)
-                coords = prefix[len("__TRANSLATE__(") :].split(",")
-                tx, ty = float(coords[0]), float(coords[1])
-
-            parsed = svg.path.parse_path(d_str)
-            subpaths = []
-            curr_pts = []
-            for seg in parsed:
-                if isinstance(seg, svg.path.Move):
-                    if len(curr_pts) >= 3:
-                        subpaths.append(np.array(curr_pts, dtype=np.int32))
-                    curr_pts = [
-                        [int(round(seg.end.real + tx)), int(round(seg.end.imag + ty))]
-                    ]
-                elif isinstance(seg, svg.path.Close):
-                    if len(curr_pts) >= 3:
-                        subpaths.append(np.array(curr_pts, dtype=np.int32))
-                    curr_pts = []
-                elif isinstance(seg, svg.path.Line):
-                    curr_pts.append(
-                        [int(round(seg.end.real + tx)), int(round(seg.end.imag + ty))]
-                    )
-                else:
-                    for t in (0.25, 0.5, 0.75, 1.0):
-                        pt = seg.point(t)
-                        curr_pts.append(
-                            [int(round(pt.real + tx)), int(round(pt.imag + ty))]
-                        )
-            if len(curr_pts) >= 3:
-                subpaths.append(np.array(curr_pts, dtype=np.int32))
-
-            if subpaths:
-                c_rgb = (
-                    int(round(rgb_val[0] * 255)),
-                    int(round(rgb_val[1] * 255)),
-                    int(round(rgb_val[2] * 255)),
-                )
-                cv2.fillPoly(canvas, subpaths, c_rgb, lineType=cv2.LINE_AA)
 
     thickness = max(2, int(round(max(width_px, height_px) / 380.0)))
     if include_cut_contour and cut_polys:
@@ -741,7 +514,6 @@ def write_eps_file(
     width_px: int,
     height_px: int,
     scale_px_to_pt: float,
-    vector_layers: List[Tuple[Tuple[float, float, float], str]],
     cut_bezier_loops: List[List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float], Tuple[float, float]]]],
     include_white_backing: bool = True,
     include_cut_contour: bool = True,
@@ -882,23 +654,6 @@ def write_eps_file(
                 "grestore",
             ]
         )
-    else:
-        ps_chunks.append("% --- Multi-Layer Vector Artwork ---")
-        for rgb_val, d_with_meta in vector_layers:
-            cmd_str = svg_d_to_postscript_commands(
-                d_with_meta, scale_px_to_pt, height_pt
-            )
-            if not cmd_str.strip():
-                continue
-            r, g, b = rgb_val
-            ps_chunks.extend(
-                [
-                    f"{r:.4f} {g:.4f} {b:.4f} rgb",
-                    "np",
-                    cmd_str,
-                    "f",
-                ]
-            )
 
     # 3. Верхний векторный слой контура надсечки CutContour (Spot Color 100% Magenta, 0.25 pt)
     if has_cut and cut_ps_path:
@@ -968,7 +723,6 @@ def write_eps_file(
     preview_rgb = render_preview_rgb(
         width_px=width_px,
         height_px=height_px,
-        vector_layers=vector_layers,
         cut_bezier_loops=cut_bezier_loops,
         include_white_backing=include_white_backing,
         include_cut_contour=include_cut_contour,
@@ -1030,7 +784,6 @@ def write_svg_preview(
     width_px: int,
     height_px: int,
     scale_px_to_pt: float,
-    vector_layers: List[Tuple[Tuple[float, float, float], str]],
     cut_bezier_loops: List[List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float], Tuple[float, float]]]],
     include_white_backing: bool = True,
     include_cut_contour: bool = True,
@@ -1083,28 +836,6 @@ def write_svg_preview(
         svg_lines.append(
             f'  <image id="Artwork" width="{width_px}" height="{height_px}" href="data:image/png;base64,{b64}"{clip_attr} />'
         )
-    else:
-        svg_lines.append('  <g id="Artwork">')
-        for rgb_val, d_with_meta in vector_layers:
-            tx, ty = 0.0, 0.0
-            d_str = d_with_meta
-            if d_str.startswith("__TRANSLATE__("):
-                prefix, d_str = d_str.split("):", 1)
-                coords = prefix[len("__TRANSLATE__(") :].split(",")
-                tx, ty = float(coords[0]), float(coords[1])
-            r_i = int(round(rgb_val[0] * 255))
-            g_i = int(round(rgb_val[1] * 255))
-            b_i = int(round(rgb_val[2] * 255))
-            hex_c = f"#{r_i:02X}{g_i:02X}{b_i:02X}"
-            transform_str = (
-                f' transform="translate({tx:.2f},{ty:.2f})"'
-                if (abs(tx) > 1e-4 or abs(ty) > 1e-4)
-                else ""
-            )
-            svg_lines.append(
-                f'    <path d="{d_str}" fill="{hex_c}" fill-rule="evenodd"{transform_str} />'
-            )
-        svg_lines.append("  </g>")
 
     if include_cut_contour and cut_d:
         svg_lines.append(
@@ -1311,10 +1042,7 @@ def convert_image_to_plotter_eps(
     bg_tolerance: float = 12.0,
     keep_background: bool = False,
     no_cut_contour: bool = False,
-    vectorize_artwork: bool = False,
     also_svg: bool = False,
-    filter_speckle: int = 2,
-    color_precision: int = 8,
     preview_png_path: Optional[Path] = None,
     perf_cut_mode: str = "none",
     nesting_qty: int = 1,
@@ -1440,43 +1168,23 @@ def convert_image_to_plotter_eps(
             smoothing_sigma=max(2.5, die_offset_px * 0.24),
         )
 
-    # 5. Подготовка графики внутри контуров
-    vector_layers: List[Tuple[Tuple[float, float, float], str]] = []
-    lossless_rgb_for_eps: Optional[np.ndarray] = None
-
-    if not vectorize_artwork:
-        decontam_rgb = (
-            decontaminate_edge_colors(rgb_padded, fg_padded, border_px=2)
-            if not keep_background
-            else rgb_padded
-        )
-        alpha_float = ndimage.gaussian_filter(
-            fg_padded.astype(np.float32) / 255.0, sigma=0.65
-        )[:, :, None]
-        core_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        core_inside = cv2.erode(fg_padded, core_k, iterations=1) > 0
-        composite = (
-            decontam_rgb.astype(np.float32) * alpha_float
-            + 255.0 * (1.0 - alpha_float)
-        ).astype(np.uint8)
-        composite[core_inside] = rgb_padded[core_inside]
-        lossless_rgb_for_eps = composite
-    else:
-        decontam_rgb = (
-            decontaminate_edge_colors(rgb_padded, fg_padded, border_px=2)
-            if not keep_background
-            else rgb_padded
-        )
-        rgba_for_trace = np.zeros(
-            (rgb_padded.shape[0], rgb_padded.shape[1], 4), dtype=np.uint8
-        )
-        rgba_for_trace[:, :, :3] = decontam_rgb
-        rgba_for_trace[:, :, 3] = fg_padded
-        vector_layers = vectorize_image_with_vtracer(
-            rgba_for_trace,
-            filter_speckle=filter_speckle,
-            color_precision=color_precision,
-        )
+    # 5. Подготовка растровой графики внутри контуров
+    decontam_rgb = (
+        decontaminate_edge_colors(rgb_padded, fg_padded, border_px=2)
+        if not keep_background
+        else rgb_padded
+    )
+    alpha_float = ndimage.gaussian_filter(
+        fg_padded.astype(np.float32) / 255.0, sigma=0.65
+    )[:, :, None]
+    core_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    core_inside = cv2.erode(fg_padded, core_k, iterations=1) > 0
+    composite = (
+        decontam_rgb.astype(np.float32) * alpha_float
+        + 255.0 * (1.0 - alpha_float)
+    ).astype(np.uint8)
+    composite[core_inside] = rgb_padded[core_inside]
+    lossless_rgb_for_eps: Optional[np.ndarray] = composite
 
     single_item_w_mm = canvas_w / px_per_mm
     single_item_h_mm = canvas_h / px_per_mm
@@ -1644,7 +1352,6 @@ def convert_image_to_plotter_eps(
         width_px=canvas_w,
         height_px=canvas_h,
         scale_px_to_pt=scale_px_to_pt,
-        vector_layers=vector_layers,
         cut_bezier_loops=cut_bezier_loops,
         include_white_backing=(offset_mm > 0 and not keep_background) or (perf_cut_mode != "none") or fit_a4_sheet,
         include_cut_contour=(not no_cut_contour),
@@ -1673,7 +1380,6 @@ def convert_image_to_plotter_eps(
             width_px=canvas_w,
             height_px=canvas_h,
             scale_px_to_pt=scale_px_to_pt,
-            vector_layers=vector_layers,
             cut_bezier_loops=cut_bezier_loops,
             include_white_backing=(offset_mm > 0 and not keep_background),
             include_cut_contour=(not no_cut_contour),
@@ -1745,31 +1451,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Не добавлять линию реза CutContour",
     )
     parser.add_argument(
-        "--vectorize",
-        action="store_true",
-        help="Перерисовать саму картинку внутри контура в векторные кривые (для простых плоских логотипов)",
-    )
-    parser.add_argument(
         "--contour-only",
         action="store_true",
-        help="Оставить исходную картинку внутри без потери качества + векторный контур реза (включено по умолчанию)",
+        help="Оставить исходную картинку внутри без потери качества + векторный контур реза (по умолчанию)",
     )
     parser.add_argument(
         "--svg",
         action="store_true",
         help="Дополнительно сохранять .svg файл рядом с .eps",
-    )
-    parser.add_argument(
-        "--speckle",
-        type=int,
-        default=2,
-        help="Фильтрация мелкого векторного мусора при --vectorize (по умолчанию: 2)",
-    )
-    parser.add_argument(
-        "--precision",
-        type=int,
-        default=8,
-        help="Точность цветов при --vectorize от 1 до 8 (по умолчанию: 8)",
     )
     parser.add_argument(
         "--notify",
@@ -1839,10 +1528,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 bg_tolerance=args.bg_tolerance,
                 keep_background=args.keep_bg,
                 no_cut_contour=args.no_cut_contour,
-                vectorize_artwork=args.vectorize,
                 also_svg=args.svg,
-                filter_speckle=args.speckle,
-                color_precision=args.precision,
             )
             print(f"✅ Готово: {target_eps}")
             created_eps_files.append(target_eps)

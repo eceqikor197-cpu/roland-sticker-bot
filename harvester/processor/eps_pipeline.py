@@ -165,7 +165,6 @@ def process_validated_image_into_eps_assets(
         bg_tolerance=12.0,
         keep_background=profile.keep_background,
         no_cut_contour=False,
-        vectorize_artwork=False,
         also_svg=False,
         preview_png_path=tmp_preview_png,
         perf_cut_mode=target_perf_mode,

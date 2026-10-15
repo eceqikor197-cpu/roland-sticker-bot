@@ -33,3 +33,7 @@ HARVESTER_ENABLED: bool = os.getenv("HARVESTER_ENABLED", "false").lower() in ("t
 # По умолчанию публичный веб-каталог закрыт (false): /harvester и /harvester_file/* требуют авторизации админа
 PUBLIC_CATALOG: bool = os.getenv("PUBLIC_CATALOG", "false").lower() in ("true", "1", "yes")
 
+# Путь к базе данных SQLite для пользователей, настроек и заданий (Фаза 6)
+STORAGE_DB_PATH: Path = Path(os.getenv("STORAGE_DB_PATH", str(BASE_DIR / "bot_storage.db")))
+
+

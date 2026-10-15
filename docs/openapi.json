@@ -356,6 +356,57 @@
           }
         }
       }
+    },
+    "/api/v1/tags": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Список популярных тегов каталога с частотой использования",
+        "operationId": "get_tags_api_v1_tags_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Количество возвращаемых тегов",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Количество возвращаемых тегов"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagInfo"
+                  },
+                  "title": "Response Get Tags Api V1 Tags Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -535,10 +586,39 @@
             "title": "Height Mm",
             "description": "Физическая высота в миллиметрах"
           },
+          "aspect": {
+            "type": "number",
+            "title": "Aspect",
+            "description": "Пропорция растра (ширина / высота)",
+            "default": 1.0
+          },
           "aspect_ratio": {
             "type": "number",
             "title": "Aspect Ratio",
-            "description": "Пропорция растра (ширина / высота)"
+            "description": "Пропорция растра (алиас для обратной совместимости)",
+            "default": 1.0
+          },
+          "alpha_coverage": {
+            "type": "number",
+            "title": "Alpha Coverage",
+            "description": "Доля непрозрачных пикселей (0.0..1.0)",
+            "default": 0.0
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Список тегов макета"
+          },
+          "palette": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Palette",
+            "description": "5 доминирующих HEX-цветов"
           },
           "license": {
             "type": "string",
@@ -618,7 +698,6 @@
           "asset_type",
           "width_mm",
           "height_mm",
-          "aspect_ratio",
           "license",
           "usable_in_service",
           "thumb_url",
@@ -704,10 +783,39 @@
             "title": "Height Mm",
             "description": "Физическая высота в миллиметрах"
           },
+          "aspect": {
+            "type": "number",
+            "title": "Aspect",
+            "description": "Пропорция растра (ширина / высота)",
+            "default": 1.0
+          },
           "aspect_ratio": {
             "type": "number",
             "title": "Aspect Ratio",
-            "description": "Пропорция растра (ширина / высота)"
+            "description": "Пропорция растра (алиас для обратной совместимости)",
+            "default": 1.0
+          },
+          "alpha_coverage": {
+            "type": "number",
+            "title": "Alpha Coverage",
+            "description": "Доля непрозрачных пикселей (0.0..1.0)",
+            "default": 0.0
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Список тегов макета"
+          },
+          "palette": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Palette",
+            "description": "5 доминирующих HEX-цветов"
           },
           "license": {
             "type": "string",
@@ -741,7 +849,6 @@
           "asset_type",
           "width_mm",
           "height_mm",
-          "aspect_ratio",
           "license",
           "usable_in_service",
           "thumb_url",
@@ -749,6 +856,28 @@
         ],
         "title": "StickerSummary",
         "description": "Краткая информация о стикере для карточек в каталоге."
+      },
+      "TagInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Название тега"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Частота использования среди доступных стикеров"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "TagInfo",
+        "description": "Информация о теге каталога с частотой использования."
       },
       "TopicInfo": {
         "properties": {

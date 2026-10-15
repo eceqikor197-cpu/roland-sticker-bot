@@ -16,6 +16,7 @@ import sticker_app.config as config
 from sticker_app.catalog_reader import (
     get_sticker,
     list_categories,
+    list_popular_tags,
     list_stickers,
 )
 from sticker_app.image_service import get_or_generate_image
@@ -24,6 +25,7 @@ from sticker_app.models import (
     HealthResponse,
     StickerDetail,
     StickerListResponse,
+    TagInfo,
 )
 
 logger = logging.getLogger("sticker_app")
@@ -153,3 +155,16 @@ def get_categories(
     asset_type: Optional[str] = Query("single_sticker", description="Тип макетов"),
 ) -> List[CategoryTree]:
     return list_categories(asset_type=asset_type or "single_sticker")
+
+
+@app.get(
+    f"{config.API_PREFIX}/tags",
+    response_model=List[TagInfo],
+    tags=["Catalog"],
+    summary="Список популярных тегов каталога с частотой использования",
+)
+def get_tags(
+    limit: int = Query(50, ge=1, le=200, description="Количество возвращаемых тегов"),
+) -> List[TagInfo]:
+    return list_popular_tags(limit=limit)
+

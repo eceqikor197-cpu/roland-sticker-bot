@@ -32,7 +32,11 @@ class StickerSummary(BaseModel):
     asset_type: str = Field(..., description="Тип макета (single_sticker, pack_sheet, etc.)")
     width_mm: float = Field(..., description="Физическая ширина в миллиметрах")
     height_mm: float = Field(..., description="Физическая высота в миллиметрах")
-    aspect_ratio: float = Field(..., description="Пропорция растра (ширина / высота)")
+    aspect: float = Field(1.0, description="Пропорция растра (ширина / высота)")
+    aspect_ratio: float = Field(1.0, description="Пропорция растра (алиас для обратной совместимости)")
+    alpha_coverage: float = Field(0.0, description="Доля непрозрачных пикселей (0.0..1.0)")
+    tags: List[str] = Field(default_factory=list, description="Список тегов макета")
+    palette: List[str] = Field(default_factory=list, description="5 доминирующих HEX-цветов")
     license: str = Field(..., description="Тип лицензии (own, licensed, cc0, unknown)")
     usable_in_service: bool = Field(..., description="Доступен ли макет для использования в сервисе")
     thumb_url: str = Field(..., description="URL миниатюры (до 256px, WebP)")
@@ -90,3 +94,11 @@ class HealthResponse(BaseModel):
 
     status: str = Field("ok", description="Статус сервиса")
     version: str = Field("0.1.0", description="Версия API")
+
+
+class TagInfo(BaseModel):
+    """Информация о теге каталога с частотой использования."""
+
+    name: str = Field(..., description="Название тега")
+    count: int = Field(..., ge=0, description="Частота использования среди доступных стикеров")
+

@@ -21,17 +21,31 @@ if _ENV_FILE.exists():
             os.environ.setdefault(_k.strip(), _v.strip().strip("'\""))
 
 # Пути к базам данных и хранилищам
-STORAGE_ROOT = Path(
-    os.getenv("STORAGE_ROOT", BASE_DIR / "bot_workspace" / "harvester" / "staging")
-).resolve()
+_demo_harv = BASE_DIR / "bot_workspace" / "demo_catalog" / "harvester.db"
+_default_harv = BASE_DIR / "bot_workspace" / "harvester" / "harvester.db"
+_default_staging = BASE_DIR / "bot_workspace" / "harvester" / "staging"
 
-HARVESTER_DB_PATH = Path(
-    os.getenv("HARVESTER_DB_PATH", BASE_DIR / "bot_workspace" / "harvester" / "harvester.db")
-).resolve()
+_use_demo = False
+if "HARVESTER_DB_PATH" not in os.environ and _demo_harv.exists():
+    try:
+        has_staging_files = any(_default_staging.iterdir()) if _default_staging.exists() else False
+    except Exception:
+        has_staging_files = False
+    if not has_staging_files:
+        _use_demo = True
 
-APP_DB_PATH = Path(
-    os.getenv("APP_DB_PATH", BASE_DIR / "bot_workspace" / "app.db")
-).resolve()
+if _use_demo:
+    _default_storage = BASE_DIR / "bot_workspace" / "demo_catalog" / "staging"
+    _default_harvester_db = BASE_DIR / "bot_workspace" / "demo_catalog" / "harvester.db"
+    _default_app_db = BASE_DIR / "bot_workspace" / "demo_catalog" / "app.db"
+else:
+    _default_storage = BASE_DIR / "bot_workspace" / "harvester" / "staging"
+    _default_harvester_db = BASE_DIR / "bot_workspace" / "harvester" / "harvester.db"
+    _default_app_db = BASE_DIR / "bot_workspace" / "app.db"
+
+STORAGE_ROOT = Path(os.getenv("STORAGE_ROOT", _default_storage)).resolve()
+HARVESTER_DB_PATH = Path(os.getenv("HARVESTER_DB_PATH", _default_harvester_db)).resolve()
+APP_DB_PATH = Path(os.getenv("APP_DB_PATH", _default_app_db)).resolve()
 
 CACHE_DIR = Path(
     os.getenv("CACHE_DIR", BASE_DIR / "bot_workspace" / "cache")

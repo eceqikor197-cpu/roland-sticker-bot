@@ -1,9 +1,11 @@
-pyTelegramBotAPI>=4.20.0
-aiohttp>=3.9.0
-requests>=2.31.0
-Pillow>=10.0.0
-opencv-python-headless>=4.8.0
-numpy>=1.26.0
-scipy>=1.12.0
-imagehash>=4.3.0
-beautifulsoup4>=4.12.0
+# Основные зависимости проекта roland-sticker-bot
+# Закреплены диапазоны, проверенные на Python 3.12 и 3.13
+pyTelegramBotAPI>=4.20.0,<=4.37.0
+aiohttp>=3.9.0,<=3.14.5
+requests>=2.31.0,<=2.34.2
+Pillow>=10.0.0,<=12.3.0
+opencv-python-headless>=4.8.0,<=5.0.0.93
+numpy>=1.26.0,<=2.5.3
+scipy>=1.12.0,<=1.18.1
+imagehash>=4.3.0,<=4.3.2
+beautifulsoup4>=4.12.0,<=4.15.0

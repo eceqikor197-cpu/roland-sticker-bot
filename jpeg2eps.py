@@ -22,7 +22,6 @@ import argparse
 import datetime
 import io
 import math
-import os
 import re
 import struct
 import subprocess
@@ -763,7 +762,7 @@ def write_eps_file(
 
     ps_chunks: List[str] = [
         "%!PS-Adobe-3.0 EPSF-3.0",
-        f"%%Creator: jpeg2eps Plotter Tool (Roland Print & Cut)",
+        "%%Creator: jpeg2eps Plotter Tool (Roland Print & Cut)",
         f"%%Title: ({title})",
         f"%%CreationDate: ({now_str})",
         f"%%BoundingBox: 0 0 {bbox_w} {bbox_h}",

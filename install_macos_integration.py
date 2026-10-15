@@ -7,7 +7,6 @@
    Доступно по правому клику на любом изображении (JPEG/PNG/WebP) в Finder -> Быстрые действия.
 """
 
-import os
 import plistlib
 import stat
 import subprocess

@@ -129,7 +129,7 @@ def _notify_admin_urgent_topic_done(
             f"📦 Цельных листов-стикерпаков (.EPS): <b>{len(packs)} шт.</b>\n"
             f"✂️ Одиночных стикеров / наклеек (.EPS): <b>{len(singles)} шт.</b>\n"
             + (f"🪧 Баннеров: <b>{len(banners)} шт.</b>\n" if banners else "")
-            + f"☁️ Все файлы в 100% оригинальном качестве выгружены на Google Диск!"
+            + "☁️ Все файлы в 100% оригинальном качестве выгружены на Google Диск!"
         )
 
         kb = InlineKeyboardMarkup()

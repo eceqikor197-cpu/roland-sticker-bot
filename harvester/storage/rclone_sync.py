@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from harvester.config import (
     HOT_PREVIEWS_DIR,

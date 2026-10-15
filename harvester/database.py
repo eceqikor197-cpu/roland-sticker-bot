@@ -16,7 +16,6 @@ import re
 import sqlite3
 import threading
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from harvester.config import DB_PATH, PHASH_HAMMING_THRESHOLD

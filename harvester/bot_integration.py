@@ -13,7 +13,7 @@ import time
 import traceback
 import urllib.parse
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import telebot
 from telebot.types import (
@@ -1128,7 +1128,7 @@ def render_harvester_web_catalog(
             <input type="hidden" name="folder" value="{html.escape(folder_filter)}" />
             <input type="text" name="q" value="{html.escape(search_q)}" placeholder="🔍 Поиск по всем папкам, фильмам, аниме, маркам авто..." style="flex:1;min-width:260px;" />
             <button type="submit">🔍 Найти в базе</button>
-            {f'<a class="action-link" style="background:#334155;" href="/harvester">✖ Сбросить</a>' if (search_q or cat_filter != 'all' or subcat_filter != 'all' or folder_filter != 'all') else ''}
+            {'<a class="action-link" style="background:#334155;" href="/harvester">✖ Сбросить</a>' if (search_q or cat_filter != 'all' or subcat_filter != 'all' or folder_filter != 'all') else ''}
           </form>
         </div>
         """

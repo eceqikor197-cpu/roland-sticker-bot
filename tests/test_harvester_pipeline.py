@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from harvester.database import init_db, slugify_folder
+from harvester.database import init_db
 from harvester.processor.pack_splitter import detect_and_split_sticker_sheet
 from harvester.seeds import build_expanded_Topics, classify_user_topic
 

@@ -923,7 +923,7 @@ def process_and_send_job(
         f"✂️ Контуры: розовый <code>CutContour</code> (<b>{num_contours} шт.</b>){perf_info}",
         f"📏 Кант: <b>{offset_mm:g} мм</b> | Режим: <b>{'Лист А4 с вырубкой рамки' if fit_a4_sheet else PERF_MODE_LABELS.get(perf_mode, perf_mode)}</b>",
         "",
-        f"💰 <b>Калькулятор по накладной ЗЕНОН-СПБ (рулон 1.37м 103₽/м + чернила STARINK 4006₽/л):</b>",
+        "💰 <b>Калькулятор по накладной ЗЕНОН-СПБ (рулон 1.37м 103₽/м + чернила STARINK 4006₽/л):</b>",
         f"• 📄 <b>На 1 лист А4 (21×29.7 см):</b> входит <b>{a4_fit_qty} шт.</b> (себест. листа А4 ~<b>{calc_curr['a4_cost_rub']} ₽</b> | клиенту ~<b>{calc_curr['a4_retail_rub']} ₽</b>)",
     ]
     if fit_a4_sheet:

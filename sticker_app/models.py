@@ -194,3 +194,12 @@ class DesignData(BaseModel):
     )
     created_at: Optional[Union[float, str]] = Field(None, description="Время создания (timestamp или ISO)")
 
+
+class DesignValidationResult(BaseModel):
+    """Результат валидации композиции стикербомбинга."""
+
+    valid: bool = Field(..., description="Соответствует ли дизайн всем правилам и ограничениям")
+    placements_count: int = Field(..., description="Количество стикеров в дизайне")
+    errors: List[str] = Field(default_factory=list, description="Список критических ошибок (выход за пределы)")
+    warnings: List[str] = Field(default_factory=list, description="Список предупреждений (нарушение safe_margin)")
+

@@ -23,6 +23,8 @@ from sticker_app.catalog_reader import (
 from sticker_app.image_service import get_or_generate_image
 from sticker_app.models import (
     CategoryTree,
+    DesignData,
+    DesignValidationResult,
     HealthResponse,
     ObjectItem,
     ObjectsListResponse,
@@ -36,6 +38,7 @@ from sticker_app.models import (
     TasteProfileRequest,
     TasteProfileResponse,
 )
+from sticker_app.design import check_design_boundaries
 from sticker_app.objects import get_object, list_objects
 from sticker_app.recommender import get_recommender_engine
 
@@ -280,5 +283,22 @@ def api_get_object(object_id: str) -> ObjectItem:
             detail=f"Объект с ID '{object_id}' не найден",
         )
     return obj
+
+
+@app.post(
+    f"{config.API_PREFIX}/design/validate",
+    response_model=DesignValidationResult,
+    summary="Валидация схемы и геометрии композиции стикербомбинга",
+    tags=["Design"],
+)
+def api_validate_design(design: DesignData) -> DesignValidationResult:
+    """Проверяет соответствие композиции схеме design.schema.json и границам объекта."""
+    errors, warnings = check_design_boundaries(design)
+    return DesignValidationResult(
+        valid=len(errors) == 0,
+        placements_count=len(design.placements),
+        errors=errors,
+        warnings=warnings,
+    )
 
 

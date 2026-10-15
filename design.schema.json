@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RolandStickerbombDesign",
+  "description": "Схема структуры композиции стикербомбинга (версия 1.0)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "object_id",
+    "placements"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Версия схемы дизайна"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Идентификатор целевого объекта оклейки"
+    },
+    "created_at": {
+      "oneOf": [
+        {
+          "type": "number",
+          "description": "Unix timestamp создания"
+        },
+        {
+          "type": "string",
+          "description": "ISO 8601 строка даты и времени"
+        }
+      ],
+      "description": "Время создания композиции"
+    },
+    "placements": {
+      "type": "array",
+      "maxItems": 150,
+      "description": "Список размещённых стикеров (не более 150 шт.)",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_id",
+          "x_mm",
+          "y_mm",
+          "width_mm"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Уникальный идентификатор макета стикера в каталоге"
+          },
+          "x_mm": {
+            "type": "number",
+            "description": "Координата X геометрического центра стикера в миллиметрах"
+          },
+          "y_mm": {
+            "type": "number",
+            "description": "Координата Y геометрического центра стикера в миллиметрах"
+          },
+          "width_mm": {
+            "type": "number",
+            "minimum": 15.0,
+            "maximum": 150.0,
+            "description": "Физическая ширина стикера в миллиметрах (от 15 до 150 мм)"
+          },
+          "rotation_deg": {
+            "type": "number",
+            "minimum": -360.0,
+            "maximum": 360.0,
+            "default": 0.0,
+            "description": "Угол поворота по часовой стрелке в градусах"
+          },
+          "z": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Порядковый номер слоя отображения (z-index)"
+          },
+          "locked": {
+            "type": "boolean",
+            "default": false,
+            "description": "Флаг блокировки от случайного перемещения или изменений"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -540,6 +540,113 @@
           }
         }
       }
+    },
+    "/api/v1/objects": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Список поддерживаемых объектов оклейки",
+        "description": "Возвращает список всех доступных объектов оклейки (моделей ноутбуков).",
+        "operationId": "api_list_objects_api_v1_objects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectsListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/objects/{object_id}": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Геометрия объекта оклейки по идентификатору",
+        "description": "Возвращает геометрию, размеры и SVG-маску конкретного объекта.",
+        "operationId": "api_get_object_api_v1_objects__object_id__get",
+        "parameters": [
+          {
+            "name": "object_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Object Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/design/validate": {
+      "post": {
+        "tags": [
+          "Design"
+        ],
+        "summary": "Валидация схемы и геометрии композиции стикербомбинга",
+        "description": "Проверяет соответствие композиции схеме design.schema.json и границам объекта.",
+        "operationId": "api_validate_design_api_v1_design_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignValidationResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -590,6 +697,146 @@
         "title": "CategoryTree",
         "description": "Иерархия категорий каталога (дерево)."
       },
+      "DesignData": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "description": "Версия схемы дизайна",
+            "default": "1.0"
+          },
+          "object_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Object Id",
+            "description": "Идентификатор целевого объекта оклейки"
+          },
+          "placements": {
+            "items": {
+              "$ref": "#/components/schemas/DesignPlacement"
+            },
+            "type": "array",
+            "maxItems": 150,
+            "title": "Placements",
+            "description": "Список размещений стикеров (до 150 шт.)"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At",
+            "description": "Время создания (timestamp или ISO)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_id"
+        ],
+        "title": "DesignData",
+        "description": "Полная структура сохранённой композиции/дизайна."
+      },
+      "DesignPlacement": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Asset Id",
+            "description": "Идентификатор макета стикера"
+          },
+          "x_mm": {
+            "type": "number",
+            "title": "X Mm",
+            "description": "Положение геометрического центра по X в миллиметрах"
+          },
+          "y_mm": {
+            "type": "number",
+            "title": "Y Mm",
+            "description": "Положение геометрического центра по Y в миллиметрах"
+          },
+          "width_mm": {
+            "type": "number",
+            "maximum": 150.0,
+            "minimum": 15.0,
+            "title": "Width Mm",
+            "description": "Ширина стикера в мм (от 15 до 150 мм)"
+          },
+          "rotation_deg": {
+            "type": "number",
+            "maximum": 360.0,
+            "minimum": -360.0,
+            "title": "Rotation Deg",
+            "description": "Угол поворота по часовой стрелке в градусах",
+            "default": 0.0
+          },
+          "z": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Z",
+            "description": "Порядковый номер слоя (z-index)",
+            "default": 0
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked",
+            "description": "Флаг блокировки от изменений",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "x_mm",
+          "y_mm",
+          "width_mm"
+        ],
+        "title": "DesignPlacement",
+        "description": "Параметры размещения одного стикера на объекте."
+      },
+      "DesignValidationResult": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid",
+            "description": "Соответствует ли дизайн всем правилам и ограничениям"
+          },
+          "placements_count": {
+            "type": "integer",
+            "title": "Placements Count",
+            "description": "Количество стикеров в дизайне"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Список критических ошибок (выход за пределы)"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Список предупреждений (нарушение safe_margin)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "placements_count"
+        ],
+        "title": "DesignValidationResult",
+        "description": "Результат валидации композиции стикербомбинга."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -621,6 +868,102 @@
         "type": "object",
         "title": "HealthResponse",
         "description": "Ответ проверки работоспособности сервиса."
+      },
+      "ObjectItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Уникальный идентификатор объекта"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Человекочитаемое название объекта"
+          },
+          "width_mm": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width Mm",
+            "description": "Физическая ширина в миллиметрах"
+          },
+          "height_mm": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height Mm",
+            "description": "Физическая высота в миллиметрах"
+          },
+          "corner_radius_mm": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Corner Radius Mm",
+            "description": "Радиус скругления углов в миллиметрах"
+          },
+          "mask_svg_path_mm": {
+            "type": "string",
+            "title": "Mask Svg Path Mm",
+            "description": "SVG path маски контура в миллиметрах"
+          },
+          "safe_margin_mm": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Safe Margin Mm",
+            "description": "Безопасный отступ от края в миллиметрах"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Примечания и статус замера"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified",
+            "description": "Подтверждены ли размеры физическим замером",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "width_mm",
+          "height_mm",
+          "corner_radius_mm",
+          "mask_svg_path_mm",
+          "safe_margin_mm"
+        ],
+        "title": "ObjectItem",
+        "description": "Описание геометрии объекта оклейки."
+      },
+      "ObjectsListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Список объектов"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Общее количество объектов"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "ObjectsListResponse",
+        "description": "Список поддерживаемых объектов оклейки."
       },
       "PaginationMeta": {
         "properties": {

@@ -556,7 +556,17 @@ def delete_user_data(user_id: int) -> Dict[str, Any]:
     storage_jobs_deleted = storage_delete_user_jobs(uid_int)
     deleted_jobs = max(deleted_jobs, storage_jobs_deleted)
 
-    # 2. Удаляем запись пользователя из SQLite и USERS_FILE
+    # 2. Удаляем настройки пользователя из SQLite и PREFS_FILE
+    user_prefs_deleted = storage_delete_user_prefs(uid_int)
+    with db_lock:
+        if PREFS_FILE.exists():
+            prefs = load_json_file(PREFS_FILE, {})
+            if uid_str in prefs:
+                del prefs[uid_str]
+                save_json_file(PREFS_FILE, prefs)
+                user_prefs_deleted = True
+
+    # 3. Удаляем запись пользователя из SQLite и USERS_FILE
     user_record_deleted = storage_delete_user_record(uid_int)
     with db_lock:
         if USERS_FILE.exists():
@@ -566,15 +576,6 @@ def delete_user_data(user_id: int) -> Dict[str, Any]:
                 save_json_file(USERS_FILE, users)
                 user_record_deleted = True
 
-    # 3. Удаляем настройки пользователя из SQLite и PREFS_FILE
-    user_prefs_deleted = storage_delete_user_prefs(uid_int)
-    with db_lock:
-        if PREFS_FILE.exists():
-            prefs = load_json_file(PREFS_FILE, {})
-            if uid_str in prefs:
-                del prefs[uid_str]
-                save_json_file(PREFS_FILE, prefs)
-                user_prefs_deleted = True
 
     # 4. Сбрасываем историю лимитера для данного пользователя
     if hasattr(conversion_limiter, "_history"):

@@ -83,12 +83,15 @@ def find_json_source_files(base_dir: Path) -> Tuple[Optional[Path], Optional[Pat
 
 
 def migrate(
-    source_dir: Path,
-    db_path: Path,
+    source_dir: Optional[Path] = None,
+    db_path: Optional[Path] = None,
     dry_run: bool = False,
+    base_dir: Optional[Path] = None,
 ) -> Dict[str, int]:
     """Выполняет миграцию данных из JSON в SQLite."""
-    users_file, prefs_file, admin_file, jobs_dir = find_json_source_files(source_dir)
+    src = source_dir or base_dir or Path(".")
+    target_db = Path(db_path) if db_path is not None else STORAGE_DB_PATH
+    users_file, prefs_file, admin_file, jobs_dir = find_json_source_files(src)
 
     stats = {
         "users": 0,
@@ -98,13 +101,14 @@ def migrate(
         "errors": 0,
     }
 
-    logger.info("Источник JSON: %s", source_dir)
-    logger.info("Целевая БД SQLite: %s", db_path)
+    logger.info("Источник JSON: %s", src)
+    logger.info("Целевая БД SQLite: %s", target_db)
     if dry_run:
         logger.info("⚡ Включён режим DRY-RUN: запись в базу данных выполняться не будет.")
     else:
-        set_custom_db_path(db_path)
-        init_storage(db_path)
+        set_custom_db_path(target_db)
+        init_storage(target_db)
+
 
     # 1. Миграция пользователей (users_db.json)
     if users_file:

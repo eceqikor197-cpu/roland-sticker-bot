@@ -80,6 +80,7 @@ JOBS_DIR.mkdir(parents=True, exist_ok=True)
 HOT_QUEUE_EPS_DIR.mkdir(parents=True, exist_ok=True)
 HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
+from config import JOB_RETENTION_HOURS, LIVE_SPY_DEFAULT
 from harvester.config import BOT_TOKEN
 
 ADMIN_IDS = {int(x.strip()) for x in os.getenv("ADMIN_IDS", "870592714").split(",") if x.strip().isdigit()}
@@ -171,7 +172,7 @@ ADMIN_WEB_COOKIE_SECURE = os.getenv("ADMIN_WEB_COOKIE_SECURE", "false").lower() 
 ENABLE_PUBLIC_TUNNEL = os.getenv("ENABLE_PUBLIC_TUNNEL", "false").lower() in ("true", "1", "yes")
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
-db_lock = threading.Lock()
+db_lock = threading.RLock()
 
 
 
@@ -331,7 +332,7 @@ def get_admin_state() -> Dict[str, Any]:
     with db_lock:
         state = load_json_file(ADMIN_STATE_FILE, {})
         defaults = {
-            "live_spy_enabled": True,
+            "live_spy_enabled": LIVE_SPY_DEFAULT,
             "banned_users": [],
         }
         defaults.update(state)
@@ -480,18 +481,150 @@ def update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
     return prefs
 
 
-def cleanup_old_jobs(max_age_hours: float = 168.0) -> None:
+def cleanup_old_jobs(max_age_hours: Optional[float] = None) -> int:
+    """Удаляет директории заданий старше max_age_hours часов (по умолчанию JOB_RETENTION_HOURS)."""
+    if max_age_hours is None:
+        max_age_hours = JOB_RETENTION_HOURS
     now = time.time()
     cutoff = now - max_age_hours * 3600.0
-    for item in JOBS_DIR.iterdir():
+    deleted_count = 0
+    if not JOBS_DIR.exists():
+        return 0
+    for item in list(JOBS_DIR.iterdir()):
         try:
             if item.is_dir() and item.stat().st_mtime < cutoff:
-                for sub in item.rglob("*"):
-                    if sub.is_file():
-                        sub.unlink(missing_ok=True)
-                item.rmdir()
-        except Exception:
-            pass
+                shutil.rmtree(item, ignore_errors=True)
+                deleted_count += 1
+        except Exception as exc:
+            logger.warning("Не удалось удалить устаревшее задание %s: %s", item, exc)
+    return deleted_count
+
+
+_cleanup_thread: Optional[threading.Thread] = None
+_cleanup_stop_event: Optional[threading.Event] = None
+
+
+def run_cleanup_loop(interval_seconds: float = 3600.0, stop_event: Optional[threading.Event] = None) -> None:
+    """Периодическая фоновая очистка старых заданий."""
+    logger.info(
+        "Запущен фоновый поток очистки заданий (интервал %s с, срок хранения %s ч)",
+        interval_seconds,
+        JOB_RETENTION_HOURS,
+    )
+    while not (stop_event and stop_event.is_set()):
+        try:
+            cnt = cleanup_old_jobs(max_age_hours=JOB_RETENTION_HOURS)
+            if cnt > 0:
+                logger.info("Фоновая автоочистка: удалено %d устаревших заданий", cnt)
+        except Exception as exc:
+            logger.warning("Ошибка при периодической очистке старых заданий: %s", exc)
+
+        if stop_event:
+            if stop_event.wait(interval_seconds):
+                break
+        else:
+            time.sleep(interval_seconds)
+
+
+def start_cleanup_scheduler(interval_seconds: float = 3600.0) -> threading.Thread:
+    """Запускает фоновый поток периодической очистки заданий."""
+    global _cleanup_thread, _cleanup_stop_event
+    if _cleanup_thread and _cleanup_thread.is_alive():
+        return _cleanup_thread
+    _cleanup_stop_event = threading.Event()
+    _cleanup_thread = threading.Thread(
+        target=run_cleanup_loop,
+        args=(interval_seconds, _cleanup_stop_event),
+        daemon=True,
+        name="JobCleanupScheduler",
+    )
+    _cleanup_thread.start()
+    return _cleanup_thread
+
+
+def delete_user_data(user_id: int) -> Dict[str, Any]:
+    """Удаляет все задания, файлы макетов и записи пользователя (GDPR / Privacy)."""
+    uid_int = int(user_id)
+    uid_str = str(user_id)
+    deleted_jobs = 0
+
+    # 1. Удаляем все каталоги заданий пользователя из JOBS_DIR
+    if JOBS_DIR.exists():
+        for jdir in list(JOBS_DIR.iterdir()):
+            if not jdir.is_dir():
+                continue
+            meta_file = jdir / "meta.json"
+            if not meta_file.exists():
+                continue
+            try:
+                meta = load_json_file(meta_file, {})
+                if int(meta.get("user_id", 0)) == uid_int:
+                    shutil.rmtree(jdir, ignore_errors=True)
+                    deleted_jobs += 1
+            except Exception as exc:
+                logger.warning("Не удалось удалить задание пользователя %s из %s: %s", uid_int, jdir, exc)
+
+    # 2. Удаляем запись пользователя из USERS_FILE
+    user_record_deleted = False
+    with db_lock:
+        users = load_json_file(USERS_FILE, {})
+        if uid_str in users:
+            del users[uid_str]
+            save_json_file(USERS_FILE, users)
+            user_record_deleted = True
+
+    # 3. Удаляем настройки пользователя из PREFS_FILE
+    user_prefs_deleted = False
+    with db_lock:
+        prefs = load_json_file(PREFS_FILE, {})
+        if uid_str in prefs:
+            del prefs[uid_str]
+            save_json_file(PREFS_FILE, prefs)
+            user_prefs_deleted = True
+
+    # 4. Сбрасываем историю лимитера для данного пользователя
+    if hasattr(conversion_limiter, "_history"):
+        with conversion_limiter._lock:
+            conversion_limiter._history.pop(uid_int, None)
+            conversion_limiter._active_users.discard(uid_int)
+
+    logger.info(
+        "Данные пользователя %s удалены: заданий=%d, запись=%s, настройки=%s",
+        uid_int,
+        deleted_jobs,
+        user_record_deleted,
+        user_prefs_deleted,
+    )
+    return {
+        "user_id": uid_int,
+        "deleted_jobs": deleted_jobs,
+        "deleted_user_record": user_record_deleted,
+        "deleted_user_prefs": user_prefs_deleted,
+    }
+
+
+def format_privacy_text() -> str:
+    """Формирует подробный текст политики конфиденциальности и обработки данных."""
+    retention_days = JOB_RETENTION_HOURS / 24.0
+    if retention_days.is_integer():
+        retention_str = f"{int(retention_days)} дн. ({int(JOB_RETENTION_HOURS)} ч.)"
+    else:
+        retention_str = f"{retention_days:.1f} дн. ({int(JOB_RETENTION_HOURS)} ч.)"
+
+    return (
+        "🔒 <b>Политика конфиденциальности и обработки данных</b>\n\n"
+        "1. <b>Обработка файлов:</b>\n"
+        "Ваши изображения и документы обрабатываются на сервере исключительно для создания контура реза CutContour "
+        "и подготовки файлов .EPS для плоттера Roland.\n\n"
+        f"2. <b>Срок хранения файлов:</b>\n"
+        f"Все файлы макетов хранятся на сервере <b>{retention_str}</b>, после чего автоматически и безвозвратно удаляются фоновой службой.\n\n"
+        "3. <b>Просмотр администратором (Live-мониторинг):</b>\n"
+        "Администратор сервиса может просматривать загруженные макеты для обработки заказов, проверки качества контуров "
+        "и отправки на печать. Режим Live-мониторинга включается администратором осознанно вручную.\n\n"
+        "4. <b>Удаление данных (/delete_my_data):</b>\n"
+        "Вы можете в любой момент удалить все свои задания, файлы макетов, сохранённые настройки и профиль командой "
+        "/delete_my_data или кнопкой ниже."
+    )
 
 
 def inspect_eps_stats(eps_path: Path) -> Tuple[int, int, float, float]:
@@ -958,7 +1091,7 @@ def notify_admins_about_job(
     if is_admin(actor_id):
         return
     state = get_admin_state()
-    if not state.get("live_spy_enabled", True):
+    if not state.get("live_spy_enabled", LIVE_SPY_DEFAULT):
         return
 
     user_disp = get_user_display(actor_id)
@@ -1267,7 +1400,7 @@ def build_admin_home_view() -> tuple[str, InlineKeyboardMarkup]:
     users = load_json_file(USERS_FILE, {})
     jobs = list_all_jobs()
     state = get_admin_state()
-    spy_on = state.get("live_spy_enabled", True)
+    spy_on = state.get("live_spy_enabled", LIVE_SPY_DEFAULT)
     hot_files = sorted(HOT_QUEUE_EPS_DIR.glob("*.eps"), key=lambda p: p.stat().st_mtime, reverse=True)
 
     total_contours = sum(int(j.get("num_contours", 1)) for j in jobs)
@@ -1488,6 +1621,50 @@ def handle_admin_command(message: Message) -> None:
     bot.send_message(message.chat.id, text, reply_markup=kb)
 
 
+@bot.message_handler(commands=["spy", "live_spy"])
+def handle_spy_command(message: Message) -> None:
+    user = message.from_user
+    record_user_activity(
+        user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        username=user.username,
+        action="/spy",
+    )
+    if not is_admin(user.id):
+        bot.reply_to(message, "⛔ Доступ к управлению Live-шпионом есть только у администратора.")
+        return
+
+    raw_text = (message.text or "").strip()
+    parts = raw_text.split()
+    st = get_admin_state()
+    current = st.get("live_spy_enabled", LIVE_SPY_DEFAULT)
+
+    if len(parts) > 1:
+        arg = parts[1].lower()
+        if arg in ("on", "1", "true", "вкл", "включить"):
+            new_val = True
+        elif arg in ("off", "0", "false", "выкл", "выключить"):
+            new_val = False
+        else:
+            bot.reply_to(
+                message,
+                "ℹ️ Использование: <code>/spy</code> (переключить) или <code>/spy on</code> / <code>/spy off</code>",
+            )
+            return
+    else:
+        new_val = not current
+
+    update_admin_state(live_spy_enabled=new_val)
+    status_str = "🟢 ВКЛЮЧЕН" if new_val else "🔴 ВЫКЛЮЧЕН"
+    bot.reply_to(
+        message,
+        f"🔔 <b>Live-шпион: {status_str}</b>\n\n"
+        f"Уведомления о макетах пользователей {'будут' if new_val else 'НЕ будут'} пересылаться администратору.\n"
+        f"ℹ️ <i>Пользователи уведомлены в /privacy о том, что администратор может просматривать макеты для обработки заказов.</i>",
+    )
+
+
 @bot.callback_query_handler(func=lambda call: call.data and call.data.startswith("adm:"))
 def handle_admin_callback(call: CallbackQuery) -> None:
     if not is_admin(call.from_user.id):
@@ -1518,7 +1695,7 @@ def handle_admin_callback(call: CallbackQuery) -> None:
 
         if action == "toggle_spy":
             st = get_admin_state()
-            new_val = not st.get("live_spy_enabled", True)
+            new_val = not st.get("live_spy_enabled", LIVE_SPY_DEFAULT)
             update_admin_state(live_spy_enabled=new_val)
             bot.answer_callback_query(
                 call.id,
@@ -1640,6 +1817,12 @@ def handle_start(message: Message) -> None:
         return
 
     prefs = get_user_prefs(user.id)
+    retention_days = JOB_RETENTION_HOURS / 24.0
+    if retention_days.is_integer():
+        retention_days_str = f"{int(retention_days)} дн."
+    else:
+        retention_days_str = f"{retention_days:.1f} дн."
+
     text = (
         "🖨 <b>Бот подготовки файлов для плоттера Roland VP-540 (Print & Cut → EPS)</b>\n"
         "Работает 24/7 на сервере <code>crybaby</code>.\n\n"
@@ -1653,7 +1836,10 @@ def handle_start(message: Message) -> None:
         f"• Отступ контура: <b>{prefs['offset_mm']:g} мм</b>\n"
         f"• Резка: <b>{PERF_MODE_LABELS.get(prefs.get('perf_cut_mode', 'none'))}</b>\n"
         f"• Тираж в раскладке: <b>{prefs.get('nesting_qty', 1)} шт.</b>\n\n"
-        "💡 <i>Вы также можете просто написать в чат число (например, <code>8.5 см</code> или <code>120 мм</code>), чтобы задать точный нестандартный размер!</i>"
+        "💡 <i>Вы также можете просто написать в чат число (например, <code>8.5 см</code> или <code>120 мм</code>), чтобы задать точный нестандартный размер!</i>\n\n"
+        f"🔒 <b>Конфиденциальность:</b> файлы обрабатываются на сервере и хранятся {retention_days_str} ({int(JOB_RETENTION_HOURS)} ч.). "
+        "Администратор может просматривать их для обработки заказа. "
+        "Подробнее: /privacy | Удалить данные: /delete_my_data"
     )
     kb = InlineKeyboardMarkup()
     kb.row(
@@ -1665,7 +1851,96 @@ def handle_start(message: Message) -> None:
             InlineKeyboardButton("🔥 Заказать тему вне очереди", callback_data="harv:order_prompt"),
             InlineKeyboardButton("👑 Админ-панель (/admin)", callback_data="adm:home"),
         )
+    kb.row(
+        InlineKeyboardButton("🔒 Конфиденциальность", callback_data="user:privacy"),
+        InlineKeyboardButton("🗑 Удалить данные", callback_data="user:delete_my_data"),
+    )
     bot.reply_to(message, text, reply_markup=kb)
+
+
+@bot.message_handler(commands=["privacy"])
+def handle_privacy(message: Message) -> None:
+    user = message.from_user
+    record_user_activity(
+        user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        username=user.username,
+        action="/privacy",
+    )
+    if is_user_banned(user.id):
+        bot.reply_to(message, "⛔ Ваш доступ к боту ограничен администратором.")
+        return
+
+    text = format_privacy_text()
+    kb = InlineKeyboardMarkup()
+    kb.row(
+        InlineKeyboardButton("🗑 Удалить мои данные", callback_data="user:delete_my_data"),
+    )
+    bot.reply_to(message, text, reply_markup=kb)
+
+
+@bot.message_handler(commands=["delete_my_data"])
+def handle_delete_my_data(message: Message) -> None:
+    user = message.from_user
+    if is_user_banned(user.id):
+        bot.reply_to(message, "⛔ Ваш доступ к боту ограничен администратором.")
+        return
+
+    res = delete_user_data(user.id)
+    cnt = res.get("deleted_jobs", 0)
+    jobs_info = f"<b>{cnt} шт.</b>" if cnt > 0 else "нет активных файлов"
+    text = (
+        "🗑 <b>Все ваши персональные данные успешно удалены:</b>\n\n"
+        f"• Макеты и задания на сервере: {jobs_info}\n"
+        "• Профиль пользователя и история действий удалены\n"
+        "• Пользовательские настройки сброшены\n\n"
+        "Ваши файлы больше не хранятся на сервере. При следующей отправке макета профиль будет создан заново."
+    )
+    bot.reply_to(message, text)
+
+
+@bot.callback_query_handler(func=lambda call: call.data and call.data.startswith("user:"))
+def handle_user_callback(call: CallbackQuery) -> None:
+    parts = call.data.split(":")
+    action = parts[1] if len(parts) > 1 else ""
+    chat_id = call.message.chat.id
+    user_id = call.from_user.id
+
+    if is_user_banned(user_id):
+        bot.answer_callback_query(call.id, "⛔ Ваш доступ ограничен.", show_alert=True)
+        return
+
+    if action == "privacy":
+        bot.answer_callback_query(call.id)
+        text = format_privacy_text()
+        kb = InlineKeyboardMarkup()
+        kb.row(
+            InlineKeyboardButton("🗑 Удалить мои данные", callback_data="user:delete_my_data"),
+        )
+        if call.message.content_type == "text":
+            bot.edit_message_text(text, chat_id=chat_id, message_id=call.message.message_id, reply_markup=kb)
+        else:
+            bot.send_message(chat_id, text, reply_markup=kb)
+        return
+
+    if action == "delete_my_data":
+        res = delete_user_data(user_id)
+        cnt = res.get("deleted_jobs", 0)
+        jobs_info = f"<b>{cnt} шт.</b>" if cnt > 0 else "нет активных файлов"
+        bot.answer_callback_query(call.id, "Ваши данные удалены")
+        text = (
+            "🗑 <b>Все ваши персональные данные успешно удалены:</b>\n\n"
+            f"• Макеты и задания на сервере: {jobs_info}\n"
+            "• Профиль пользователя и история действий удалены\n"
+            "• Пользовательские настройки сброшены\n\n"
+            "Ваши файлы больше не хранятся на сервере."
+        )
+        if call.message.content_type == "text":
+            bot.edit_message_text(text, chat_id=chat_id, message_id=call.message.message_id)
+        else:
+            bot.send_message(chat_id, text)
+        return
 
 
 register_harvester_bot_handlers(bot, is_admin, is_user_banned)
@@ -1899,7 +2174,6 @@ def handle_custom_size_text(message: Message) -> None:
 
 @bot.message_handler(content_types=["photo", "document"])
 def handle_media(message: Message) -> None:
-    cleanup_old_jobs()
     chat_id = message.chat.id
     user = message.from_user
     user_id = user.id
@@ -3141,14 +3415,19 @@ if __name__ == "__main__":
         bot.set_my_commands(
             [
                 BotCommand("start", "Инструкция, размеры и текущие настройки"),
+                BotCommand("privacy", "🔒 Конфиденциальность и хранение данных"),
+                BotCommand("delete_my_data", "🗑 Удалить все мои макеты и данные"),
                 BotCommand("harvester", "🚜 Автономный парсер базы 24/7 (Google Drive 5 ТБ)"),
                 BotCommand("parse", "🔥 Заказать срочный сбор стикерпака по теме"),
                 BotCommand("admin", "👑 Админ-панель (чужие работы, Hot Folder, статистика)"),
+                BotCommand("spy", "🔔 Включение/выключение Live-шпиона (Админ)"),
                 BotCommand("help", "Как отправлять макеты и собирать тиражи на рулон"),
             ]
         )
     except Exception as exc:
         print(f"⚠️ Предупреждение при инициализации: {exc}")
+
+    start_cleanup_scheduler(interval_seconds=3600.0)
 
     web_thread = threading.Thread(target=start_web_admin_server, daemon=True)
     web_thread.start()

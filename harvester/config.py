@@ -57,6 +57,8 @@ if _ENV_FILE.exists():
             _k, _, _v = _line.partition("=")
             os.environ.setdefault(_k.strip(), _v.strip().strip("'\""))
 
+from config import JOB_RETENTION_HOURS as JOB_RETENTION_HOURS, LIVE_SPY_DEFAULT as LIVE_SPY_DEFAULT
+
 BOT_TOKEN = os.environ.get("PLOTTER_BOT_TOKEN", "").strip()
 if not BOT_TOKEN:
     import warnings

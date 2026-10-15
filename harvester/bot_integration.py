@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Интеграция комбайна Sticker Harvester 24/7 в существующий Telegram-бот (telegram_bot.py)
-и веб-панель администратора (http://192.168.0.108:8090).
+и веб-панель администратора.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from telebot.types import (
     Message,
 )
 
+from config import HOT_FOLDER_SMB_HOST
 from harvester.config import (
     HARVESTER_ENABLED,
     PREVIEWS_DIR,
@@ -1033,7 +1034,7 @@ def register_harvester_bot_handlers(
                     chat_id,
                     f"🚀 <b>Макет из базы отправлен в Hot Folder плоттера!</b>\n"
                     f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
-                    f"📂 Сетевой путь: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
+                    f"📂 Сетевой путь: <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
                 )
                 return
 
@@ -1051,7 +1052,7 @@ def register_harvester_bot_handlers(
                     chat_id,
                     f"🚀 <b>Макет (подтверждён админом) отправлен в Hot Folder плоттера!</b>\n"
                     f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
-                    f"📂 Сетевой путь: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
+                    f"📂 Сетевой путь: <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
                 )
                 return
 

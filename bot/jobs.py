@@ -195,7 +195,7 @@ def inspect_eps_stats(eps_path: Path) -> Tuple[int, int, float, float]:
 
 
 def copy_job_to_hot_folder(job_id: str) -> Optional[Path]:
-    """Копирует готовый .eps и превью в сетевую папку Samba /home/crybaby/Roland_HotFolder/."""
+    """Копирует готовый .eps и превью в сетевую папку плоттера Roland_HotFolder."""
     jobs_dir = _get_jobs_dir()
     hot_queue_dir = _get_hot_queue_dir()
     hot_prev_dir = _get_hot_previews_dir()

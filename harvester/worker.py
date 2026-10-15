@@ -53,8 +53,9 @@ from harvester.scrapers.tg_stickers import search_telegram_stickers_for_query
 from harvester.scrapers.web_clipart import search_highres_web_images
 from harvester.seeds import classify_user_topic, seed_database_if_needed
 from harvester.storage.rclone_sync import sync_staging_to_gdrive
+from config import ADMIN_IDS
 
-ADMIN_CHAT_ID = 870592714
+ADMIN_CHAT_ID = next(iter(ADMIN_IDS)) if ADMIN_IDS else 0
 
 
 def _build_pack_and_single_queries(topic: Dict[str, Any]) -> List[str]:

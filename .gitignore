@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 *.token
+xray_config.json
+!xray_config.example.json
 
 # Python & Virtualenv
 __pycache__/

@@ -19,6 +19,9 @@ if _ENV_FILE.exists():
             _k, _, _v = _line.partition("=")
             os.environ.setdefault(_k.strip(), _v.strip().strip("'\""))
 
+# Токен Telegram-бота
+PLOTTER_BOT_TOKEN: str = os.getenv("PLOTTER_BOT_TOKEN", "").strip()
+
 # Настройки приватности и хранения данных (Фаза 4)
 # По умолчанию Live-шпион выключен ради приватности пользователей
 LIVE_SPY_DEFAULT: bool = os.getenv("LIVE_SPY_DEFAULT", "false").lower() in ("true", "1", "yes")
@@ -39,14 +42,17 @@ STORAGE_DB_PATH: Path = Path(os.getenv("STORAGE_DB_PATH", str(BASE_DIR / "bot_st
 # Настройки веб-админки и туннелей
 WEB_HOST: str = os.getenv("ADMIN_WEB_HOST", "127.0.0.1")
 WEB_PORT: int = int(os.getenv("ADMIN_WEB_PORT", "8090"))
-ADMIN_WEB_PASSWORD: str = os.getenv("ADMIN_WEB_PASSWORD", "roland")
+ADMIN_WEB_PASSWORD: str = os.getenv("ADMIN_WEB_PASSWORD", "")
 ADMIN_WEB_COOKIE_SECURE: bool = os.getenv("ADMIN_WEB_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
 ENABLE_PUBLIC_TUNNEL: bool = os.getenv("ENABLE_PUBLIC_TUNNEL", "false").lower() in ("true", "1", "yes")
+
+# Сетевой хост/IP для подключения к Hot Folder по Samba
+HOT_FOLDER_SMB_HOST: str = os.getenv("HOT_FOLDER_SMB_HOST", "127.0.0.1")
 
 # Администраторы Telegram-бота
 ADMIN_IDS: set[int] = {
     int(x.strip())
-    for x in os.getenv("ADMIN_IDS", "870592714").split(",")
+    for x in os.getenv("ADMIN_IDS", "").split(",")
     if x.strip().isdigit()
 }
 
@@ -56,9 +62,13 @@ ALLOW_USER_HOT_FOLDER: bool = os.getenv("ALLOW_USER_HOT_FOLDER", "false").lower(
 # Директории рабочих файлов и Hot Folder
 WORK_DIR: Path = BASE_DIR / "bot_workspace"
 JOBS_DIR: Path = WORK_DIR / "jobs"
-HOT_FOLDER_ROOT: Path = Path("/home/crybaby/Roland_HotFolder")
-if not HOT_FOLDER_ROOT.parent.exists():
+
+_custom_hot = os.getenv("HOT_FOLDER_ROOT")
+if _custom_hot:
+    HOT_FOLDER_ROOT = Path(_custom_hot)
+else:
     HOT_FOLDER_ROOT = WORK_DIR / "Roland_HotFolder"
+
 HOT_QUEUE_EPS_DIR: Path = HOT_FOLDER_ROOT / "Queue_EPS"
 HOT_PREVIEWS_DIR: Path = HOT_FOLDER_ROOT / "Previews"
 
@@ -68,3 +78,15 @@ HOT_QUEUE_EPS_DIR.mkdir(parents=True, exist_ok=True)
 HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def validate_config(raise_on_error: bool = False) -> list[str]:
+    """Проверяет наличие обязательных настроек в конфигурации."""
+    errors = []
+    if not PLOTTER_BOT_TOKEN:
+        errors.append("Переменная окружения PLOTTER_BOT_TOKEN не задана.")
+    if not ADMIN_IDS:
+        errors.append("Переменная окружения ADMIN_IDS не задана (список Telegram ID через запятую).")
+    if not ADMIN_WEB_PASSWORD:
+        errors.append("Переменная окружения ADMIN_WEB_PASSWORD не задана.")
+    if errors and raise_on_error:
+        raise ValueError("Ошибка конфигурации:\n" + "\n".join(f"- {e}" for e in errors))
+    return errors

@@ -43,6 +43,7 @@ from bot.keyboards import (
 )
 from config import (
     ADMIN_IDS,
+    HOT_FOLDER_SMB_HOST,
     JOB_RETENTION_HOURS,
     JOBS_DIR,
     LIVE_SPY_DEFAULT,
@@ -359,7 +360,7 @@ def handle_admin_callback(call: CallbackQuery) -> None:
                 chat_id,
                 f"🚀 <b>Файл отправлен в сетевую папку плоттера (Hot Folder)!</b>\n"
                 f"📄 Имя файла: <code>{html.escape(dest.name)}</code>\n"
-                f"📂 На ПК с Roland VersaWorks: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
+                f"📂 На ПК с Roland VersaWorks: <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
             )
             return
 
@@ -436,7 +437,7 @@ def handle_start(message: Message) -> None:
         "• 💎 <b>100% сохранение качества оригинала</b> внутри наклеек + розовый контур надсечки <code>CutContour</code>;\n"
         "• 📦 <b>Двойной рез для Roland VersaWorks:</b> умеет добавлять сквозной контур <code>PerfCutContour</code> (голубая линия на превью) — рамку вокруг всего стикерпака или вырубку каждого стикера навылет;\n"
         "• 🧩 <b>Авто-раскладка на рулон (Nesting) + калькулятор цены:</b> собирает тираж 10 / 25 / 50 / 100 шт. в один печатный <code>.eps</code> на ширину рулона и считает себестоимость плёнки/чернил;\n"
-        "• 🚀 <b>Отправка в Hot Folder плоттера:</b> в 1 клик кидает готовый <code>.eps</code> в сетевую папку <code>\\\\192.168.0.108\\Roland_HotFolder</code>.\n\n"
+        f"• 🚀 <b>Отправка в Hot Folder плоттера:</b> в 1 клик кидает готовый <code>.eps</code> в сетевую папку <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder</code>.\n\n"
         f"⚙️ <b>Ваши текущие настройки:</b>\n"
         f"• Размер большей стороны: <b>{prefs['size_mm']:g} мм</b> ({prefs['size_mm']/10.0:g} см)\n"
         f"• Отступ контура: <b>{prefs['offset_mm']:g} мм</b>\n"

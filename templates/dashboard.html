@@ -102,9 +102,8 @@
   {{toast_html}}
   <div class="smb-banner">
     <span>🖨 <b>Сетевая папка Hot Folder для ПК с плоттером:</b></span>
-    <span>Windows: <code>\\192.168.0.108\Roland_HotFolder\Queue_EPS</code></span>
-    <span>Tailscale: <code>\\100.76.178.11\Roland_HotFolder\Queue_EPS</code></span>
-    <span>Mac: <code>smb://192.168.0.108/Roland_HotFolder</code></span>
+    <span>Windows: <code>\\{{smb_host}}\Roland_HotFolder\Queue_EPS</code></span>
+    <span>Mac: <code>smb://{{smb_host}}/Roland_HotFolder</code></span>
   </div>
   <div class="pills">
     {{user_pills}}

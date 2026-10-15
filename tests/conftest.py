@@ -7,6 +7,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("PLOTTER_BOT_TOKEN", "123456:dummy_test_token")
+os.environ.setdefault("ADMIN_IDS", "123456789")
+os.environ.setdefault("ADMIN_WEB_PASSWORD", "test_admin_password_123")
 
 import pytest
 

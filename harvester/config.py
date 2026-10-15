@@ -23,11 +23,11 @@ TMP_DOWNLOAD_DIR = HARVESTER_DIR / "tmp_downloads"
 MODELS_DIR = BASE_DIR / "models"
 U2NETP_ONNX_PATH = MODELS_DIR / "u2netp.onnx"
 
-HOT_FOLDER_ROOT = Path("/home/crybaby/Roland_HotFolder")
-if not HOT_FOLDER_ROOT.parent.exists():
-    HOT_FOLDER_ROOT = WORK_DIR / "Roland_HotFolder"
-HOT_QUEUE_EPS_DIR = HOT_FOLDER_ROOT / "Queue_EPS"
-HOT_PREVIEWS_DIR = HOT_FOLDER_ROOT / "Previews"
+from config import (
+    HOT_FOLDER_ROOT as HOT_FOLDER_ROOT,
+    HOT_PREVIEWS_DIR as HOT_PREVIEWS_DIR,
+    HOT_QUEUE_EPS_DIR as HOT_QUEUE_EPS_DIR,
+)
 
 for _d in (
     WORK_DIR,

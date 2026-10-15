@@ -36,6 +36,7 @@ from bot.keyboards import (
 from config import (
     ADMIN_IDS,
     ALLOW_USER_HOT_FOLDER,
+    HOT_FOLDER_SMB_HOST,
     JOBS_DIR,
 )
 from storage import (
@@ -291,8 +292,8 @@ def handle_job_callback(call: CallbackQuery) -> None:
                     chat_id,
                     f"🚀 <b>Макет отправлен на ПК с плоттером (Hot Folder)!</b>\n"
                     f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
-                    f"📂 Сетевой путь Windows: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>\n"
-                    f"📂 Сетевой путь Mac: <code>smb://192.168.0.108/Roland_HotFolder/Queue_EPS/{html.escape(dest.name)}</code>",
+                    f"📂 Сетевой путь Windows: <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>\n"
+                    f"📂 Сетевой путь Mac: <code>smb://{HOT_FOLDER_SMB_HOST}/Roland_HotFolder/Queue_EPS/{html.escape(dest.name)}</code>",
                 )
                 return
             else:

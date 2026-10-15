@@ -218,21 +218,21 @@ def test_security_headers_present_on_all_responses(test_server: Tuple[str, int])
 
 
 def test_legacy_auth_bypasses_removed(test_server: Tuple[str, int]) -> None:
-    """Проверка, что передача ключа в query (?key=...) или числового ID 870592714 не дает доступа."""
+    """Проверка, что передача ключа в query (?key=...) или числового ID не дает доступа."""
     host, port = test_server
 
-    # ?key=roland
+    # ?key=password
     status, headers, _ = make_request(host, port, "GET", f"/?key={ADMIN_WEB_PASSWORD}")
     assert status == 302
     assert headers.get("location", "").startswith("/login")
 
-    # ?key=870592714
-    status, headers, _ = make_request(host, port, "GET", "/?key=870592714")
+    # ?key=123456789
+    status, headers, _ = make_request(host, port, "GET", "/?key=123456789")
     assert status == 302
     assert headers.get("location", "").startswith("/login")
 
-    # Cookie: roland_admin_key=870592714
-    headers_legacy = {"Cookie": "roland_admin_key=870592714"}
+    # Cookie: roland_admin_key=123456789
+    headers_legacy = {"Cookie": "roland_admin_key=123456789"}
     status, headers, _ = make_request(host, port, "GET", "/", headers=headers_legacy)
     assert status == 302
     assert headers.get("location", "").startswith("/login")

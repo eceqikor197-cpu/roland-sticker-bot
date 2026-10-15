@@ -30,7 +30,7 @@ from config import (
     ADMIN_IDS, ADMIN_WEB_COOKIE_SECURE, ADMIN_WEB_PASSWORD, ALLOW_USER_HOT_FOLDER,
     ENABLE_PUBLIC_TUNNEL, HOT_FOLDER_ROOT, HOT_PREVIEWS_DIR, HOT_QUEUE_EPS_DIR,
     JOB_RETENTION_HOURS, JOBS_DIR, LIVE_SPY_DEFAULT, PUBLIC_CATALOG, STORAGE_DB_PATH,
-    WEB_HOST, WEB_PORT, WORK_DIR,
+    WEB_HOST, WEB_PORT, WORK_DIR, validate_config,
 )
 from harvester.config import BOT_TOKEN
 from jpeg2eps import convert_image_to_plotter_eps
@@ -94,6 +94,11 @@ __all__ = [
 
 
 def main() -> None:
+    cfg_errors = validate_config()
+    if cfg_errors:
+        for err in cfg_errors:
+            logger.warning("Конфигурация: %s", err)
+
     print("🔄 Синхронизация истории работ и пользователей...")
     try:
         get_or_create_admin_web_key()

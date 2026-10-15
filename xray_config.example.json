@@ -35,13 +35,13 @@
       "settings": {
         "vnext": [
           {
-            "address": "nl01.goodmaximum.com",
+            "address": "<YOUR_SERVER_ADDRESS>",
             "port": 443,
             "users": [
               {
                 "encryption": "none",
-                "flow": "",
-                "id": "2b25bb03-02c2-000a-9154-f7051051d1a9"
+                "flow": "xtls-rprx-vision",
+                "id": "<YOUR_UUID>"
               }
             ]
           }
@@ -51,9 +51,9 @@
         "network": "tcp",
         "realitySettings": {
           "fingerprint": "chrome",
-          "publicKey": "fPSR5GZpxhOV6Rh7VzMtS4AeRN7ipyNX4waG9JzJzxQ",
-          "serverName": "nimhogoa.com",
-          "shortId": "99998028b56c8704"
+          "publicKey": "<YOUR_REALITY_PUBLIC_KEY>",
+          "serverName": "<YOUR_REALITY_SERVER_NAME>",
+          "shortId": "<YOUR_SHORT_ID>"
         },
         "security": "reality",
         "tcpSettings": {}

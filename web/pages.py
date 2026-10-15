@@ -11,6 +11,7 @@ import html
 from pathlib import Path
 from typing import Any, Dict
 
+from config import HOT_FOLDER_SMB_HOST
 from storage import (
     format_user_trigger as storage_format_user_trigger,
     get_all_users as storage_get_all_users,
@@ -146,7 +147,7 @@ def render_dashboard(
         cards_html.append(render_template("card.html", card_context))
 
     toast_html = (
-        f'<div style="background:#065f46;color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:18px;font-weight:600;">🚀 Файл <code>{html.escape(hot_msg)}</code> скопирован в сетевую папку плоттера <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\</code>!</div>'
+        f'<div style="background:#065f46;color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:18px;font-weight:600;">🚀 Файл <code>{html.escape(hot_msg)}</code> скопирован в сетевую папку плоттера <code>\\\\{HOT_FOLDER_SMB_HOST}\\Roland_HotFolder\\Queue_EPS\\</code>!</div>'
         if hot_msg
         else ""
     )
@@ -154,6 +155,7 @@ def render_dashboard(
     dashboard_context = {
         "csrf_token": html.escape(csrf_token),
         "toast_html": toast_html,
+        "smb_host": html.escape(HOT_FOLDER_SMB_HOST),
         "user_count": len(users),
         "jobs_count": len(all_jobs),
         "total_contours": total_contours,

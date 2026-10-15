@@ -1,0 +1,841 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Roland Stickerbomb API",
+    "description": "REST API для каталога макетов и кастомайзера стикербомбинга",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Проверка работоспособности сервиса",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Список стикеров каталога с пагинацией и фильтрами",
+        "operationId": "get_stickers_api_v1_stickers_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Количество элементов на странице",
+              "default": 30,
+              "title": "Page Size"
+            },
+            "description": "Количество элементов на странице"
+          },
+          {
+            "name": "asset_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Тип макета (single_sticker, pack_sheet)",
+              "default": "single_sticker",
+              "title": "Asset Type"
+            },
+            "description": "Тип макета (single_sticker, pack_sheet)"
+          },
+          {
+            "name": "category_lvl1",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Фильтр по категории 1 уровня",
+              "title": "Category Lvl1"
+            },
+            "description": "Фильтр по категории 1 уровня"
+          },
+          {
+            "name": "category_lvl2",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Фильтр по подкатегории 2 уровня",
+              "title": "Category Lvl2"
+            },
+            "description": "Фильтр по подкатегории 2 уровня"
+          },
+          {
+            "name": "folder_slug",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Слаг папки темы",
+              "title": "Folder Slug"
+            },
+            "description": "Слаг папки темы"
+          },
+          {
+            "name": "topic_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название темы",
+              "title": "Topic Name"
+            },
+            "description": "Название темы"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поисковый запрос по названию или теме",
+              "title": "Search"
+            },
+            "description": "Поисковый запрос по названию или теме"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StickerListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers/{asset_id}": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Детальная информация о макете",
+        "operationId": "get_sticker_detail_api_v1_stickers__asset_id__get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StickerDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers/{asset_id}/image": {
+      "get": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Раздача изображений макетов (thumb, preview, full)",
+        "operationId": "get_sticker_image_api_v1_stickers__asset_id__image_get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Размер: thumb (256px), preview (1024px), full (оригинал)",
+              "default": "preview",
+              "title": "Size"
+            },
+            "description": "Размер: thumb (256px), preview (1024px), full (оригинал)"
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Иерархия категорий и тем каталога",
+        "operationId": "get_categories_api_v1_categories_get",
+        "parameters": [
+          {
+            "name": "asset_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Тип макетов",
+              "default": "single_sticker",
+              "title": "Asset Type"
+            },
+            "description": "Тип макетов"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTree"
+                  },
+                  "title": "Response Get Categories Api V1 Categories Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CategoryLevel2": {
+        "properties": {
+          "category_lvl2": {
+            "type": "string",
+            "title": "Category Lvl2",
+            "description": "Название подкатегории"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicInfo"
+            },
+            "type": "array",
+            "title": "Topics",
+            "description": "Темы подкатегории"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_lvl2"
+        ],
+        "title": "CategoryLevel2",
+        "description": "Подкатегория 2-го уровня с темами."
+      },
+      "CategoryTree": {
+        "properties": {
+          "category_lvl1": {
+            "type": "string",
+            "title": "Category Lvl1",
+            "description": "Основная категория 1-го уровня"
+          },
+          "subcategories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryLevel2"
+            },
+            "type": "array",
+            "title": "Subcategories",
+            "description": "Список подкатегорий"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_lvl1"
+        ],
+        "title": "CategoryTree",
+        "description": "Иерархия категорий каталога (дерево)."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Статус сервиса",
+            "default": "ok"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Версия API",
+            "default": "0.1.0"
+          }
+        },
+        "type": "object",
+        "title": "HealthResponse",
+        "description": "Ответ проверки работоспособности сервиса."
+      },
+      "PaginationMeta": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "description": "Номер текущей страницы (1-based)"
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "description": "Количество элементов на странице"
+          },
+          "total_items": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Items",
+            "description": "Общее число элементов по фильтру"
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Pages",
+            "description": "Общее число страниц"
+          },
+          "has_next": {
+            "type": "boolean",
+            "title": "Has Next",
+            "description": "Есть ли следующая страница"
+          },
+          "has_prev": {
+            "type": "boolean",
+            "title": "Has Prev",
+            "description": "Есть ли предыдущая страница"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page",
+          "page_size",
+          "total_items",
+          "total_pages",
+          "has_next",
+          "has_prev"
+        ],
+        "title": "PaginationMeta",
+        "description": "Метаданные пагинации."
+      },
+      "StickerDetail": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "title": "Asset Id",
+            "description": "Уникальный идентификатор стикера"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Название стикера"
+          },
+          "topic_name": {
+            "type": "string",
+            "title": "Topic Name",
+            "description": "Название темы"
+          },
+          "folder_slug": {
+            "type": "string",
+            "title": "Folder Slug",
+            "description": "Слаг темы"
+          },
+          "category_lvl1": {
+            "type": "string",
+            "title": "Category Lvl1",
+            "description": "Основная категория (уровень 1)"
+          },
+          "category_lvl2": {
+            "type": "string",
+            "title": "Category Lvl2",
+            "description": "Подкатегория (уровень 2)"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type",
+            "description": "Тип макета (single_sticker, pack_sheet, etc.)"
+          },
+          "width_mm": {
+            "type": "number",
+            "title": "Width Mm",
+            "description": "Физическая ширина в миллиметрах"
+          },
+          "height_mm": {
+            "type": "number",
+            "title": "Height Mm",
+            "description": "Физическая высота в миллиметрах"
+          },
+          "aspect_ratio": {
+            "type": "number",
+            "title": "Aspect Ratio",
+            "description": "Пропорция растра (ширина / высота)"
+          },
+          "license": {
+            "type": "string",
+            "title": "License",
+            "description": "Тип лицензии (own, licensed, cc0, unknown)"
+          },
+          "usable_in_service": {
+            "type": "boolean",
+            "title": "Usable In Service",
+            "description": "Доступен ли макет для использования в сервисе"
+          },
+          "thumb_url": {
+            "type": "string",
+            "title": "Thumb Url",
+            "description": "URL миниатюры (до 256px, WebP)"
+          },
+          "preview_url": {
+            "type": "string",
+            "title": "Preview Url",
+            "description": "URL превью (до 1024px, WebP)"
+          },
+          "width_px": {
+            "type": "integer",
+            "title": "Width Px",
+            "description": "Ширина исходного растра в пикселях"
+          },
+          "height_px": {
+            "type": "integer",
+            "title": "Height Px",
+            "description": "Высота исходного растра в пикселях"
+          },
+          "offset_mm": {
+            "type": "number",
+            "title": "Offset Mm",
+            "description": "Отступ контура реза CutContour в мм"
+          },
+          "perf_cut_mode": {
+            "type": "string",
+            "title": "Perf Cut Mode",
+            "description": "Режим перфорации/сквозного реза (die_cut, sheet_frame, none)"
+          },
+          "num_contours": {
+            "type": "integer",
+            "title": "Num Contours",
+            "description": "Число контуров CutContour"
+          },
+          "source_name": {
+            "type": "string",
+            "title": "Source Name",
+            "description": "Источник происхождения макета"
+          },
+          "created_at": {
+            "type": "number",
+            "title": "Created At",
+            "description": "Время добавления (unix timestamp)"
+          },
+          "parent_asset_id": {
+            "type": "string",
+            "title": "Parent Asset Id",
+            "description": "ID родительского листа, если стикер из пака",
+            "default": ""
+          },
+          "full_image_url": {
+            "type": "string",
+            "title": "Full Image Url",
+            "description": "URL полноразмерного исходного изображения"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "title",
+          "topic_name",
+          "folder_slug",
+          "category_lvl1",
+          "category_lvl2",
+          "asset_type",
+          "width_mm",
+          "height_mm",
+          "aspect_ratio",
+          "license",
+          "usable_in_service",
+          "thumb_url",
+          "preview_url",
+          "width_px",
+          "height_px",
+          "offset_mm",
+          "perf_cut_mode",
+          "num_contours",
+          "source_name",
+          "created_at",
+          "full_image_url"
+        ],
+        "title": "StickerDetail",
+        "description": "Детальная информация о макете стикера."
+      },
+      "StickerListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StickerSummary"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Список стикеров"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta",
+            "description": "Пагинация"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meta"
+        ],
+        "title": "StickerListResponse",
+        "description": "Ответ со списком стикеров и пагинацией."
+      },
+      "StickerSummary": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "title": "Asset Id",
+            "description": "Уникальный идентификатор стикера"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Название стикера"
+          },
+          "topic_name": {
+            "type": "string",
+            "title": "Topic Name",
+            "description": "Название темы"
+          },
+          "folder_slug": {
+            "type": "string",
+            "title": "Folder Slug",
+            "description": "Слаг темы"
+          },
+          "category_lvl1": {
+            "type": "string",
+            "title": "Category Lvl1",
+            "description": "Основная категория (уровень 1)"
+          },
+          "category_lvl2": {
+            "type": "string",
+            "title": "Category Lvl2",
+            "description": "Подкатегория (уровень 2)"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type",
+            "description": "Тип макета (single_sticker, pack_sheet, etc.)"
+          },
+          "width_mm": {
+            "type": "number",
+            "title": "Width Mm",
+            "description": "Физическая ширина в миллиметрах"
+          },
+          "height_mm": {
+            "type": "number",
+            "title": "Height Mm",
+            "description": "Физическая высота в миллиметрах"
+          },
+          "aspect_ratio": {
+            "type": "number",
+            "title": "Aspect Ratio",
+            "description": "Пропорция растра (ширина / высота)"
+          },
+          "license": {
+            "type": "string",
+            "title": "License",
+            "description": "Тип лицензии (own, licensed, cc0, unknown)"
+          },
+          "usable_in_service": {
+            "type": "boolean",
+            "title": "Usable In Service",
+            "description": "Доступен ли макет для использования в сервисе"
+          },
+          "thumb_url": {
+            "type": "string",
+            "title": "Thumb Url",
+            "description": "URL миниатюры (до 256px, WebP)"
+          },
+          "preview_url": {
+            "type": "string",
+            "title": "Preview Url",
+            "description": "URL превью (до 1024px, WebP)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "title",
+          "topic_name",
+          "folder_slug",
+          "category_lvl1",
+          "category_lvl2",
+          "asset_type",
+          "width_mm",
+          "height_mm",
+          "aspect_ratio",
+          "license",
+          "usable_in_service",
+          "thumb_url",
+          "preview_url"
+        ],
+        "title": "StickerSummary",
+        "description": "Краткая информация о стикере для карточек в каталоге."
+      },
+      "TopicInfo": {
+        "properties": {
+          "topic_id": {
+            "type": "integer",
+            "title": "Topic Id",
+            "description": "ID темы в базе"
+          },
+          "topic_name": {
+            "type": "string",
+            "title": "Topic Name",
+            "description": "Название темы"
+          },
+          "folder_slug": {
+            "type": "string",
+            "title": "Folder Slug",
+            "description": "Слаг темы"
+          },
+          "category_lvl1": {
+            "type": "string",
+            "title": "Category Lvl1",
+            "description": "Категория 1-го уровня"
+          },
+          "category_lvl2": {
+            "type": "string",
+            "title": "Category Lvl2",
+            "description": "Подкатегория 2-го уровня"
+          },
+          "stickers_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Stickers Count",
+            "description": "Количество доступных стикеров в теме"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_id",
+          "topic_name",
+          "folder_slug",
+          "category_lvl1",
+          "category_lvl2",
+          "stickers_count"
+        ],
+        "title": "TopicInfo",
+        "description": "Информация о теме каталога."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

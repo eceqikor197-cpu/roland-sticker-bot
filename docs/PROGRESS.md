@@ -23,10 +23,28 @@
   - Реальная БД `bot_workspace/harvester/harvester.db` на текущий момент содержит 0 макетов (код парсера есть, но боевая база хранится на сервере crybaby или в rclone). Для инспекции боевой базы пользователь может скопировать реальный `harvester.db` и запустить `python scripts/inspect_catalog.py --db <путь> --storage-root <путь>`.
   - Переход к этапу S1 (FastAPI бэкенд, catalog_reader, раздача thumb/preview).
 
+### Этап S1: Бэкенд: доступ к каталогу и раздача изображений
+- **Статус:** Завершён (ветка `feature/s1`)
+- **Сделано:**
+  - Создан модуль Pydantic-моделей `sticker_app/models.py` (`PaginationMeta`, `StickerSummary`, `StickerDetail`, `StickerListResponse`, `TopicInfo`, `CategoryLevel2`, `CategoryTree`, `HealthResponse`). В публичных моделях полностью отсутствуют внутренние файловые пути.
+  - Создан модуль чтения каталога `sticker_app/catalog_reader.py`: строго read-only подключение к `harvester.db`, фильтрация (`asset_type`, категории, темы, полнотекстовый поиск, лицензионный фильтр), пагинация, безопасное разрешение путей с защитой от path traversal (`resolve_asset_path`, `PathTraversalError`).
+  - Создан сервис изображений `sticker_app/image_service.py`: масштабирование (LANCZOS) и сохранение альфа-прозрачности, форматы WebP (`thumb` до 256px, `preview` до 1024px) и исходный PNG (`full`), кэширование на диске в `CACHE_DIR`, генерация ETag.
+  - Создано FastAPI приложение `sticker_app/main.py`: эндпоинты `/api/v1/health`, `/api/v1/stickers`, `/api/v1/stickers/{asset_id}`, `/api/v1/stickers/{asset_id}/image`, `/api/v1/categories`, поддержка HTTP-кэширования (`Cache-Control: public, max-age=86400`, `ETag`, `304 Not Modified`), строгий CORS из `config.CORS_ORIGINS`.
+  - Создан скрипт генерации схемы OpenAPI `scripts/export_openapi.py`, экспортирован актуальный `docs/openapi.json`.
+  - Добавлены зависимости `fastapi`, `uvicorn`, `pydantic` в `requirements.txt` и `httpx` в `requirements-dev.txt`.
+  - Написаны тесты в `tests/app/test_api_catalog.py` (11 тестов: health, пагинация, фильтрация, поиск, детали, 404, thumb/preview/full, сохранение альфа-канала, кэш, ETag/304, защита от path traversal, дерево категорий, фильтр лицензий).
+- **Проверено:**
+  - `python scripts/export_openapi.py` — OpenAPI контракт сгенерирован в `docs/openapi.json`.
+  - Дымовой тест live-сервера `uvicorn sticker_app.main:app` — отвечает `200 OK` на `/api/v1/health`.
+  - `pytest tests/app/test_api_catalog.py -v` — 11 passed.
+  - `pytest -q` — 117 passed, 2 xfailed.
+  - `ruff check .` — All checks passed.
+- **Осталось / открытые вопросы:**
+  - Переход к этапу S2: собственная база `app.db`, миграции, обогащение метаданных (теги, палитры, aspect, alpha_coverage) и CLI управления лицензиями.
+
 ---
 
 ### Следующие этапы
-- **S1:** FastAPI-бэкенд и доступ к каталогу (read-only `harvester.db`, раздача thumb/preview).
 - **S2:** Метаданные, теги и лицензионный фильтр (`app.db`, `sync_catalog`).
 - **S3:** Вкусовой профиль и рекомендации (TF-IDF, MMR, холодный старт).
 - **S4:** Объекты, геометрия и единицы (Tech Specs макбуков, golden vectors).

@@ -156,17 +156,16 @@ def build_harvester_home_view(is_admin: bool = False) -> Tuple[str, InlineKeyboa
             )
 
     public_url = str(st.get("public_web_url") or "").strip().rstrip("/")
-    admin_key = str(st.get("admin_web_key") or "").strip()
     if public_url:
         lines.append(f"\n🌐 <b>Онлайн Веб-Каталог (с любого устройства):</b>\n<a href=\"{html.escape(public_url)}/harvester\">{html.escape(public_url)}/harvester</a>")
 
     kb = InlineKeyboardMarkup()
     if public_url:
-        if is_admin and admin_key:
+        if is_admin:
             kb.row(
                 InlineKeyboardButton(
                     "🌐 Открыть Веб-Дашборд Базы (Админ)",
-                    url=f"{public_url}/harvester?key={urllib.parse.quote(admin_key)}",
+                    url=f"{public_url}/harvester",
                 )
             )
         else:
@@ -827,6 +826,7 @@ def render_harvester_web_catalog(
     search_q: str = "",
     msg_banner: str = "",
     is_admin: bool = False,
+    csrf_token: str = "",
 ) -> bytes:
     init_db()
     st = get_all_state()
@@ -1048,7 +1048,10 @@ def render_harvester_web_catalog(
         )
 
         hot_btn_html = (
-            f'<a class="btn btn-hot" href="/harvester_hot/{aid}">{"✅ В Hot Folder" if in_hot else "🚀 В Hot Folder"}</a>'
+            f"""<form method="POST" action="/harvester_hot/{aid}" style="margin:0;flex:1;display:flex;">
+                <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+                <button type="submit" class="btn btn-hot" style="width:100%;border:none;cursor:pointer;font-family:inherit;">{"✅ В Hot Folder" if in_hot else "🚀 В Hot Folder"}</button>
+            </form>"""
             if is_admin
             else f'<a class="btn btn-secondary" href="/harvester_file/{aid}/preview" target="_blank">🖼 Превью</a>'
         )
@@ -1097,20 +1100,29 @@ def render_harvester_web_catalog(
         """
         controls_html = f"""
         <div class="controls-bar">
-          <form class="form-inline" method="GET" action="/harvester_order">
+          <form class="form-inline" method="POST" action="/harvester_order">
+            <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
             <b>🔥 Срочно собрать тему:</b>
             <input type="text" name="topic" placeholder="Например: Король и Шут, Subaru, Наруто..." required />
             <button type="submit">🚀 Запустить вне очереди</button>
           </form>
-          <form class="form-inline" method="GET" action="/harvester">
-            <input type="hidden" name="cat" value="{html.escape(cat_filter)}" />
-            <input type="hidden" name="subcat" value="{html.escape(subcat_filter)}" />
-            <input type="hidden" name="folder" value="{html.escape(folder_filter)}" />
-            <input type="text" name="q" value="{html.escape(search_q)}" placeholder="Поиск по базе тем и файлов..." />
-            <button type="submit" style="background:#334155;">🔍 Найти</button>
-            <a class="action-link" style="background:#0284c7;" href="/harvester_toggle">{'⏸ Пауза' if enabled else '▶️ Старт'}</a>
-            <a class="action-link" style="background:#059669;" href="/harvester_sync">☁️ Выгрузить в GDrive</a>
-          </form>
+          <div class="form-inline" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <form class="form-inline" method="GET" action="/harvester" style="margin:0;">
+              <input type="hidden" name="cat" value="{html.escape(cat_filter)}" />
+              <input type="hidden" name="subcat" value="{html.escape(subcat_filter)}" />
+              <input type="hidden" name="folder" value="{html.escape(folder_filter)}" />
+              <input type="text" name="q" value="{html.escape(search_q)}" placeholder="Поиск по базе тем и файлов..." />
+              <button type="submit" style="background:#334155;">🔍 Найти</button>
+            </form>
+            <form method="POST" action="/harvester_toggle" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+              <button type="submit" class="action-link" style="background:#0284c7;border:none;cursor:pointer;font-family:inherit;">{'⏸ Пауза' if enabled else '▶️ Старт'}</button>
+            </form>
+            <form method="POST" action="/harvester_sync" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+              <button type="submit" class="action-link" style="background:#059669;border:none;cursor:pointer;font-family:inherit;">☁️ Выгрузить в GDrive</button>
+            </form>
+          </div>
         </div>
         """
     else:

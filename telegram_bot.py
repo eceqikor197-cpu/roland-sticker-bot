@@ -12,10 +12,13 @@ Telegram-бот на сервере crybaby для конвертации JPEG/P
 """
 
 import datetime
+import hmac
 import html
 import json
+import logging
 import os
 import re
+import secrets
 import shutil
 import threading
 import time
@@ -25,6 +28,8 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger("telegram_bot")
 
 import telebot
 from telebot.types import (
@@ -47,7 +52,7 @@ from harvester.bot_integration import (
      register_harvester_bot_handlers,
     render_harvester_web_catalog,
 )
-from harvester.database import get_asset, get_state, set_state
+from harvester.database import get_asset, get_state, init_db, set_state
 from harvester.storage.rclone_sync import (
     copy_harvester_asset_to_hot_folder,
     ensure_local_eps_for_asset,
@@ -75,22 +80,138 @@ HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 from harvester.config import BOT_TOKEN
 
 ADMIN_IDS = {870592714}
+WEB_HOST = os.getenv("ADMIN_WEB_HOST", "127.0.0.1")
 WEB_PORT = int(os.getenv("ADMIN_WEB_PORT", "8090"))
 ADMIN_WEB_PASSWORD = os.getenv("ADMIN_WEB_PASSWORD", "roland")
+ADMIN_WEB_COOKIE_SECURE = os.getenv("ADMIN_WEB_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+ENABLE_PUBLIC_TUNNEL = os.getenv("ENABLE_PUBLIC_TUNNEL", "false").lower() in ("true", "1", "yes")
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 db_lock = threading.Lock()
 
 
+class WebSessionStore:
+    def __init__(self, ttl_seconds: int = 86400 * 7):
+        self.ttl_seconds = ttl_seconds
+        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._lock = threading.Lock()
+
+    def create_session(self) -> Tuple[str, str]:
+        session_id = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_urlsafe(32)
+        now = time.time()
+        with self._lock:
+            self._purge_expired_locked(now)
+            self._sessions[session_id] = {
+                "csrf_token": csrf_token,
+                "created_at": now,
+                "expires_at": now + self.ttl_seconds,
+            }
+        return session_id, csrf_token
+
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        if not session_id:
+            return None
+        now = time.time()
+        with self._lock:
+            sess = self._sessions.get(session_id)
+            if not sess:
+                return None
+            if sess["expires_at"] < now:
+                self._sessions.pop(session_id, None)
+                return None
+            return sess
+
+    def destroy_session(self, session_id: str) -> None:
+        if not session_id:
+            return
+        with self._lock:
+            self._sessions.pop(session_id, None)
+
+    def validate_csrf(self, session_id: str, candidate_csrf: str) -> bool:
+        sess = self.get_session(session_id)
+        if not sess:
+            return False
+        stored_csrf = str(sess.get("csrf_token", ""))
+        if not candidate_csrf or not stored_csrf:
+            return False
+        return hmac.compare_digest(candidate_csrf, stored_csrf)
+
+    def _purge_expired_locked(self, now: float) -> None:
+        expired = [sid for sid, data in self._sessions.items() if data["expires_at"] < now]
+        for sid in expired:
+            self._sessions.pop(sid, None)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._sessions.clear()
+
+
+class LoginRateLimiter:
+    def __init__(
+        self,
+        max_attempts: int = 5,
+        window_seconds: int = 600,
+        block_seconds: int = 900,
+    ):
+        self.max_attempts = max_attempts
+        self.window_seconds = window_seconds
+        self.block_seconds = block_seconds
+        self._attempts: Dict[str, List[float]] = {}
+        self._blocks: Dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def is_blocked(self, ip: str) -> Tuple[bool, int]:
+        now = time.time()
+        with self._lock:
+            block_until = self._blocks.get(ip, 0.0)
+            if block_until > now:
+                return True, int(block_until - now)
+            if ip in self._blocks:
+                del self._blocks[ip]
+            return False, 0
+
+    def record_failure(self, ip: str) -> Tuple[bool, int]:
+        now = time.time()
+        with self._lock:
+            if self._blocks.get(ip, 0.0) > now:
+                return True, int(self._blocks[ip] - now)
+
+            history = [t for t in self._attempts.get(ip, []) if now - t < self.window_seconds]
+            history.append(now)
+            self._attempts[ip] = history
+
+            if len(history) >= self.max_attempts:
+                block_until = now + self.block_seconds
+                self._blocks[ip] = block_until
+                self._attempts.pop(ip, None)
+                logger.warning(
+                    "IP %s заблокирован на %d минут из-за %d неудачных попыток входа.",
+                    ip,
+                    self.block_seconds // 60,
+                    self.max_attempts,
+                )
+                return True, self.block_seconds
+
+            return False, 0
+
+    def record_success(self, ip: str) -> None:
+        with self._lock:
+            self._attempts.pop(ip, None)
+            self._blocks.pop(ip, None)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._attempts.clear()
+            self._blocks.clear()
+
+
+web_session_store = WebSessionStore()
+login_rate_limiter = LoginRateLimiter()
+
+
 def get_or_create_admin_web_key() -> str:
-    try:
-        k = str(get_state("admin_web_key", "") or "").strip()
-        if not k or len(k) < 12:
-            k = uuid.uuid4().hex[:16]
-            set_state("admin_web_key", k)
-        return k
-    except Exception:
-        return "roland870592714"
+    return ""
 
 
 def get_public_web_url() -> str:
@@ -815,7 +936,6 @@ def process_and_send_job(
     offset_mm = float(prefs["offset_mm"])
     size_mm = float(prefs["size_mm"])
     keep_bg = bool(prefs["keep_background"])
-    vectorize = False
     perf_mode = str(prefs.get("perf_cut_mode", "none"))
     perf_passes = int(prefs.get("perf_cut_passes", 2))
     nesting_qty = int(prefs.get("nesting_qty", 1))
@@ -1034,7 +1154,6 @@ def build_admin_home_view() -> tuple[str, InlineKeyboardMarkup]:
     total_contours = sum(int(j.get("num_contours", 1)) for j in jobs)
     total_mb = sum(float(j.get("eps_size_mb", 0.0)) for j in jobs)
     public_url = get_public_web_url()
-    admin_key = get_or_create_admin_web_key()
 
     lines = [
         "👑 <b>Админ-панель Plotter EPS Bot (сервер crybaby)</b>\n",
@@ -1051,10 +1170,10 @@ def build_admin_home_view() -> tuple[str, InlineKeyboardMarkup]:
         )
     lines.extend(
         [
-            f"• 🦊 <b>Tailscale (даже с Happ VPN):</b> <code>http://[fd7a:115c:a1e0::b62e:d84a]:{WEB_PORT}/harvester</code>",
+            f"• 🦊 <b>Tailscale:</b> <code>http://[fd7a:115c:a1e0::b62e:d84a]:{WEB_PORT}/harvester</code>",
             f"• 🦊 <b>Tailscale IPv4:</b> <code>http://100.76.216.73:{WEB_PORT}/harvester</code>",
             f"• 🏠 <b>По локалке:</b> <code>http://192.168.0.115:{WEB_PORT}/harvester</code>",
-            f"• 🔐 <b>Пароль админа в браузере:</b> <code>{html.escape(ADMIN_WEB_PASSWORD)}</code> <i>(по кнопкам ниже вход автоматический!)</i>\n",
+            "• 🔐 <b>Вход в веб-админку:</b> используйте пароль администратора\n",
             "📂 <b>Сетевая папка для ПК с плоттером (Samba):</b>",
             "• Windows: <code>\\\\192.168.0.115\\Roland_HotFolder</code> (или <code>\\\\100.76.216.73\\Roland_HotFolder</code>)",
             "• Mac: <code>smb://192.168.0.115/Roland_HotFolder</code>\n",
@@ -1079,11 +1198,11 @@ def build_admin_home_view() -> tuple[str, InlineKeyboardMarkup]:
         kb.row(
             InlineKeyboardButton(
                 "🌐 Веб-База Стикеров (Админ)",
-                url=f"{public_url}/harvester?key={urllib.parse.quote(admin_key)}",
+                url=f"{public_url}/harvester",
             ),
             InlineKeyboardButton(
                 "👑 Веб-Панель Работ (Админ)",
-                url=f"{public_url}/?key={urllib.parse.quote(admin_key)}",
+                url=f"{public_url}/",
             ),
         )
     kb.row(
@@ -1886,38 +2005,59 @@ class AdminWebHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         pass
 
+    def end_headers(self) -> None:
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline';",
+        )
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        super().end_headers()
+
     def do_HEAD(self) -> None:
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
 
-    def check_admin_auth(self, qs: Dict[str, List[str]]) -> Tuple[bool, Optional[str]]:
-        admin_key = get_or_create_admin_web_key()
-        valid_tokens = {admin_key, ADMIN_WEB_PASSWORD, "870592714"}
+    def get_client_ip(self) -> str:
+        return self.client_address[0]
 
-        # 1. Check query parameter ?key=...
-        q_key = qs.get("key", [""])[0].strip()
-        if q_key and q_key in valid_tokens:
-            return True, admin_key
-
-        # 2. Check Cookie header
+    def get_session_id_from_cookie(self) -> Optional[str]:
         cookie_hdr = self.headers.get("Cookie", "")
         for part in cookie_hdr.split(";"):
             part = part.strip()
-            if part.startswith("roland_admin_key="):
-                c_val = part.split("=", 1)[1].strip()
-                if c_val in valid_tokens:
-                    return True, None
+            if part.startswith("roland_session="):
+                return part.split("=", 1)[1].strip()
+        return None
 
-        return False, None
+    def check_admin_auth(self) -> Tuple[bool, Optional[str], Optional[str]]:
+        session_id = self.get_session_id_from_cookie()
+        if not session_id:
+            return False, None, None
+        sess = web_session_store.get_session(session_id)
+        if not sess:
+            return False, None, None
+        return True, session_id, sess.get("csrf_token")
 
-    def send_admin_cookie(self, token: str) -> None:
-        self.send_header(
-            "Set-Cookie",
-            f"roland_admin_key={token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax",
-        )
+    def send_session_cookie(self, session_id: str) -> None:
+        flags = "Path=/; Max-Age=604800; HttpOnly; SameSite=Strict"
+        if ADMIN_WEB_COOKIE_SECURE:
+            flags += "; Secure"
+        self.send_header("Set-Cookie", f"roland_session={session_id}; {flags}")
 
-    def serve_login_page(self, next_url: str = "/harvester", error_msg: str = "") -> None:
+    def clear_session_cookie(self) -> None:
+        flags = "Path=/; Max-Age=0; HttpOnly; SameSite=Strict"
+        if ADMIN_WEB_COOKIE_SECURE:
+            flags += "; Secure"
+        self.send_header("Set-Cookie", f"roland_session=; {flags}")
+
+    def serve_login_page(
+        self,
+        next_url: str = "/",
+        error_msg: str = "",
+        status_code: int = 200,
+    ) -> None:
         err_html = (
             f'<div style="background:#7f1d1d;color:#fecaca;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;">{html.escape(error_msg)}</div>'
             if error_msg
@@ -1961,7 +2101,7 @@ class AdminWebHandler(BaseHTTPRequestHandler):
     <h2>🔐 Вход для администратора</h2>
     <p>Каталог стикеров открыт для всех, а управление парсером и просмотр чужих работ доступны по паролю админа.</p>
     {err_html}
-    <form method="GET" action="/login">
+    <form method="POST" action="/login">
       <input type="hidden" name="next" value="{html.escape(next_url)}" />
       <input type="password" name="pw" placeholder="Введите пароль админа..." autofocus required />
       <button type="submit">Войти в панель управления</button>
@@ -1971,7 +2111,7 @@ class AdminWebHandler(BaseHTTPRequestHandler):
 </body>
 </html>"""
         body = page.encode("utf-8")
-        self.send_response(200)
+        self.send_response(status_code)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -1981,45 +2121,56 @@ class AdminWebHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         qs = urllib.parse.parse_qs(parsed.query)
-        is_admin_user, set_cookie_token = self.check_admin_auth(qs)
+        client_ip = self.get_client_ip()
+        is_admin_user, session_id, csrf_token = self.check_admin_auth()
+
+        # Mutating endpoints must NOT execute via GET
+        if (
+            path in ("/harvester_toggle", "/harvester_sync", "/harvester_order")
+            or path.startswith("/send_hot/")
+            or path.startswith("/harvester_hot/")
+        ):
+            self.send_error(405, "Method Not Allowed")
+            return
 
         if path == "/login":
-            next_url = qs.get("next", ["/harvester"])[0]
+            is_blocked, remaining = login_rate_limiter.is_blocked(client_ip)
+            next_url = qs.get("next", ["/"])[0]
             if not next_url.startswith("/"):
-                next_url = "/harvester"
-            pw = qs.get("pw", [""])[0].strip()
-            if pw:
-                admin_key = get_or_create_admin_web_key()
-                if pw in {admin_key, ADMIN_WEB_PASSWORD, "870592714"}:
-                    self.send_response(302)
-                    self.send_admin_cookie(admin_key)
-                    self.send_header("Location", next_url)
-                    self.end_headers()
-                    return
-                self.serve_login_page(next_url=next_url, error_msg="Неверный пароль администратора")
+                next_url = "/"
+            if is_blocked:
+                self.serve_login_page(
+                    next_url=next_url,
+                    error_msg=f"Слишком много неудачных попыток входа. Доступ заблокирован ({max(1, remaining // 60)} мин.).",
+                    status_code=429,
+                )
+                return
+            if is_admin_user:
+                self.send_response(302)
+                self.send_header("Location", next_url)
+                self.end_headers()
                 return
             self.serve_login_page(next_url=next_url)
             return
 
         if path == "/logout":
+            if session_id:
+                web_session_store.destroy_session(session_id)
             self.send_response(302)
-            self.send_header(
-                "Set-Cookie",
-                "roland_admin_key=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
-            )
-            self.send_header("Location", "/harvester")
+            self.clear_session_cookie()
+            self.send_header("Location", "/login")
             self.end_headers()
             return
 
-        if path == "/" or path == "/index.html":
+        if path in ("/", "/index.html"):
             if not is_admin_user:
                 self.send_response(302)
-                self.send_header("Location", "/harvester")
+                self.send_header("Location", "/login?next=/")
                 self.end_headers()
                 return
             filter_uid_str = qs.get("user", ["all"])[0]
             hot_msg = qs.get("hot_sent", [""])[0]
-            self.serve_dashboard(filter_uid_str, hot_msg=hot_msg, set_cookie_token=set_cookie_token)
+            self.serve_dashboard(filter_uid_str, hot_msg=hot_msg, csrf_token=csrf_token or "")
             return
 
         if path == "/harvester":
@@ -2035,73 +2186,13 @@ class AdminWebHandler(BaseHTTPRequestHandler):
                 search_q=search_q,
                 msg_banner=msg_b,
                 is_admin=is_admin_user,
+                csrf_token=csrf_token or "",
             )
             self.send_response(200)
-            if set_cookie_token:
-                self.send_admin_cookie(set_cookie_token)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-            return
-
-        if path == "/harvester_toggle":
-            if not is_admin_user:
-                self.send_response(302)
-                self.send_header("Location", "/login?next=/harvester")
-                self.end_headers()
-                return
-            curr = bool(get_state("enabled", True))
-            set_state("enabled", not curr)
-            m = "Парсер 24/7 запущен!" if not curr else "Парсер поставлен на паузу"
-            self.send_response(302)
-            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
-            self.end_headers()
-            return
-
-        if path == "/harvester_sync":
-            if not is_admin_user:
-                self.send_response(302)
-                self.send_header("Location", "/login?next=/harvester")
-                self.end_headers()
-                return
-            ok, cnt, mb, msg = sync_staging_to_gdrive()
-            m = f"Синхронизация с Google Drive: выгружено {cnt} шт. ({mb:.1f} МБ) — {msg}"
-            self.send_response(302)
-            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
-            self.end_headers()
-            return
-
-        if path == "/harvester_order":
-            if not is_admin_user:
-                self.send_response(302)
-                self.send_header("Location", "/login?next=/harvester")
-                self.end_headers()
-                return
-            t_raw = qs.get("topic", [""])[0].strip()
-            if t_raw:
-                enqueue_and_run_urgent_topic(bot, list(ADMIN_IDS)[0], t_raw)
-                m = f"🔥 Тема «{t_raw}» запущена вне очереди! Результаты появятся здесь и в Telegram-боте."
-            else:
-                m = "Укажите название темы"
-            self.send_response(302)
-            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
-            self.end_headers()
-            return
-
-        if path.startswith("/harvester_hot/"):
-            if not is_admin_user:
-                self.send_response(302)
-                self.send_header("Location", "/login?next=/harvester")
-                self.end_headers()
-                return
-            aid = path.strip("/").split("/")[-1]
-            dest = copy_harvester_asset_to_hot_folder(aid)
-            fname = dest.name if dest else "ошибка"
-            m = f"🚀 Макет {fname} отправлен в сетевую папку плоттера Roland_HotFolder!"
-            self.send_response(302)
-            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
-            self.end_headers()
             return
 
         if path.startswith("/harvester_file/"):
@@ -2110,20 +2201,6 @@ class AdminWebHandler(BaseHTTPRequestHandler):
                 _, aid, kind = parts
                 self.serve_harvester_file(aid, kind)
                 return
-
-        if path.startswith("/send_hot/"):
-            if not is_admin_user:
-                self.send_response(302)
-                self.send_header("Location", "/login?next=/")
-                self.end_headers()
-                return
-            job_id = path.strip("/").split("/")[-1]
-            dest = copy_job_to_hot_folder(job_id)
-            fname = dest.name if dest else ""
-            self.send_response(302)
-            self.send_header("Location", f"/?hot_sent={urllib.parse.quote(fname)}")
-            self.end_headers()
-            return
 
         if path.startswith("/files/"):
             if not is_admin_user:
@@ -2136,6 +2213,121 @@ class AdminWebHandler(BaseHTTPRequestHandler):
                 _, job_id, kind = parts
                 self.serve_job_file(job_id, kind)
                 return
+
+        self.send_error(404, "Not Found")
+
+    def do_POST(self) -> None:
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        client_ip = self.get_client_ip()
+
+        content_len = int(self.headers.get("Content-Length", 0))
+        body_bytes = self.rfile.read(content_len) if content_len > 0 else b""
+        post_params = urllib.parse.parse_qs(body_bytes.decode("utf-8", errors="replace"))
+
+        if path == "/login":
+            is_blocked, remaining = login_rate_limiter.is_blocked(client_ip)
+            next_url = post_params.get("next", ["/"])[0]
+            if not next_url.startswith("/"):
+                next_url = "/"
+
+            if is_blocked:
+                self.serve_login_page(
+                    next_url=next_url,
+                    error_msg=f"Слишком много неудачных попыток входа. Доступ заблокирован ({max(1, remaining // 60)} мин.).",
+                    status_code=429,
+                )
+                return
+
+            pw = post_params.get("pw", [""])[0]
+            if pw and hmac.compare_digest(pw.encode("utf-8"), ADMIN_WEB_PASSWORD.encode("utf-8")):
+                login_rate_limiter.record_success(client_ip)
+                session_id, _ = web_session_store.create_session()
+                self.send_response(302)
+                self.send_session_cookie(session_id)
+                self.send_header("Location", next_url)
+                self.end_headers()
+                return
+
+            is_now_blocked, remaining = login_rate_limiter.record_failure(client_ip)
+            if is_now_blocked:
+                self.serve_login_page(
+                    next_url=next_url,
+                    error_msg="Неверный пароль. Превышен лимит попыток! IP заблокирован на 15 минут.",
+                    status_code=429,
+                )
+            else:
+                self.serve_login_page(
+                    next_url=next_url,
+                    error_msg="Неверный пароль администратора.",
+                    status_code=401,
+                )
+            return
+
+        is_admin_user, session_id, _ = self.check_admin_auth()
+        if not is_admin_user or not session_id:
+            self.send_response(302)
+            self.send_header("Location", f"/login?next={urllib.parse.quote(path)}")
+            self.end_headers()
+            return
+
+        # Check CSRF token
+        candidate_csrf = post_params.get("csrf_token", [""])[0] or self.headers.get("X-CSRF-Token", "")
+        if not web_session_store.validate_csrf(session_id, candidate_csrf):
+            self.send_error(403, "Forbidden: Invalid or missing CSRF token")
+            return
+
+        if path == "/harvester_toggle":
+            init_db()
+            curr = bool(get_state("enabled", True))
+            set_state("enabled", not curr)
+            m = "Парсер 24/7 запущен!" if not curr else "Парсер поставлен на паузу"
+            self.send_response(302)
+            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
+            self.end_headers()
+            return
+
+        if path == "/harvester_sync":
+            init_db()
+            ok, cnt, mb, msg = sync_staging_to_gdrive()
+            m = f"Синхронизация с Google Drive: выгружено {cnt} шт. ({mb:.1f} МБ) — {msg}"
+            self.send_response(302)
+            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
+            self.end_headers()
+            return
+
+        if path == "/harvester_order":
+            init_db()
+            t_raw = post_params.get("topic", [""])[0].strip()
+            if t_raw:
+                enqueue_and_run_urgent_topic(bot, list(ADMIN_IDS)[0], t_raw)
+                m = f"🔥 Тема «{t_raw}» запущена вне очереди! Результаты появятся здесь и в Telegram-боте."
+            else:
+                m = "Укажите название темы"
+            self.send_response(302)
+            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
+            self.end_headers()
+            return
+
+        if path.startswith("/harvester_hot/"):
+            init_db()
+            aid = post_params.get("asset_id", [""])[0] or path.strip("/").split("/")[-1]
+            dest = copy_harvester_asset_to_hot_folder(aid)
+            fname = dest.name if dest else "ошибка"
+            m = f"🚀 Макет {fname} отправлен в сетевую папку плоттера Roland_HotFolder!"
+            self.send_response(302)
+            self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
+            self.end_headers()
+            return
+
+        if path.startswith("/send_hot/"):
+            job_id = post_params.get("job_id", [""])[0] or path.strip("/").split("/")[-1]
+            dest = copy_job_to_hot_folder(job_id)
+            fname = dest.name if dest else ""
+            self.send_response(302)
+            self.send_header("Location", f"/?hot_sent={urllib.parse.quote(fname)}")
+            self.end_headers()
+            return
 
         self.send_error(404, "Not Found")
 
@@ -2186,6 +2378,7 @@ class AdminWebHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def serve_harvester_file(self, asset_id: str, kind: str) -> None:
+        init_db()
         asset = get_asset(asset_id)
         if not asset:
             self.send_error(404, "Asset not found")
@@ -2228,7 +2421,7 @@ class AdminWebHandler(BaseHTTPRequestHandler):
         self,
         filter_uid_str: str,
         hot_msg: str = "",
-        set_cookie_token: Optional[str] = None,
+        csrf_token: str = "",
     ) -> None:
         users = load_json_file(USERS_FILE, {})
         filter_uid = (
@@ -2261,7 +2454,6 @@ class AdminWebHandler(BaseHTTPRequestHandler):
             uinfo = users.get(str(uid), {"user_id": uid, "first_name": f"User {uid}"})
             uname_html = format_user_trigger(uinfo)
             ts_str = format_ts(float(j.get("updated_at", j.get("created_at", 0))))
-            stem = html.escape(str(j.get("orig_stem", "sticker")))
             nc = j.get("num_contours", 1)
             off = j.get("offset_mm", 2.5)
             w_mm = j.get("width_mm", 100)
@@ -2301,7 +2493,10 @@ class AdminWebHandler(BaseHTTPRequestHandler):
                     </div>
                     <div class="card-actions">
                         <a class="btn btn-primary" href="/files/{jid}/eps">📥 Скачать .EPS</a>
-                        <a class="btn btn-hot" href="/send_hot/{jid}">{'✅ В Hot Folder' if in_hot else '🚀 В Hot Folder'}</a>
+                        <form method="POST" action="/send_hot/{jid}" style="margin:0;flex:1;display:flex;">
+                            <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+                            <button type="submit" class="btn btn-hot" style="width:100%;border:none;cursor:pointer;font-family:inherit;">{'✅ В Hot Folder' if in_hot else '🚀 В Hot Folder'}</button>
+                        </form>
                         <a class="btn btn-secondary" href="/files/{jid}/orig" download>🖼</a>
                     </div>
                 </div>
@@ -2319,6 +2514,7 @@ class AdminWebHandler(BaseHTTPRequestHandler):
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="csrf-token" content="{html.escape(csrf_token)}" />
 <meta http-equiv="refresh" content="25" />
 <title>👑 Админ-панель Roland VP-540 — crybaby</title>
 <style>
@@ -2431,8 +2627,6 @@ class AdminWebHandler(BaseHTTPRequestHandler):
 </html>"""
         body = page.encode("utf-8")
         self.send_response(200)
-        if set_cookie_token:
-            self.send_admin_cookie(set_cookie_token)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -2440,29 +2634,12 @@ class AdminWebHandler(BaseHTTPRequestHandler):
 
 
 def start_web_admin_server() -> None:
-    import socket
-
     try:
-        class DualStackServer(ThreadingHTTPServer):
-            address_family = socket.AF_INET6
-
-            def server_bind(self) -> None:
-                try:
-                    self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-                except Exception:
-                    pass
-                super().server_bind()
-
-        server = DualStackServer(("::", WEB_PORT), AdminWebHandler)
-        print(f"🌐 Веб-админка (Dual-Stack IPv4+IPv6) запущена на http://[::]:{WEB_PORT}")
+        server = ThreadingHTTPServer((WEB_HOST, WEB_PORT), AdminWebHandler)
+        logger.info("Веб-админка запущена на http://%s:%d", WEB_HOST, WEB_PORT)
         server.serve_forever()
-    except Exception:
-        try:
-            server = ThreadingHTTPServer(("0.0.0.0", WEB_PORT), AdminWebHandler)
-            print(f"🌐 Веб-админка запущена на http://0.0.0.0:{WEB_PORT}")
-            server.serve_forever()
-        except Exception as exc:
-            print(f"⚠️ Ошибка запуска веб-админки на порту {WEB_PORT}: {exc}")
+    except Exception as exc:
+        logger.error("Ошибка запуска веб-админки на %s:%d: %s", WEB_HOST, WEB_PORT, exc)
 
 
 def start_cloudflared_tunnel_supervisor() -> None:
@@ -2527,13 +2704,13 @@ def start_cloudflared_tunnel_supervisor() -> None:
                             kb.row(
                                 InlineKeyboardButton(
                                     "🌐 Веб-База Стикеров (Админ)",
-                                    url=f"{u}/harvester?key={urllib.parse.quote(k)}",
+                                    url=f"{u}/harvester",
                                 )
                             )
                             kb.row(
                                 InlineKeyboardButton(
                                     "👑 Веб-Панель Работ (Админ)",
-                                    url=f"{u}/?key={urllib.parse.quote(k)}",
+                                    url=f"{u}/",
                                 )
                             )
                             text = (
@@ -2541,8 +2718,8 @@ def start_cloudflared_tunnel_supervisor() -> None:
                                 f"• 📦 <b>Публичный каталог стикеров (с любого устройства без VPN):</b>\n"
                                 f"<a href=\"{html.escape(u)}/harvester\">{html.escape(u)}/harvester</a>\n\n"
                                 f"• 🦊 <b>Постоянный адрес Tailscale (при включённом Tailscale на Mac):</b>\n"
-                                f"<code>http://[fd7a:115c:a1e0::b62e:d84a]:{WEB_PORT}/harvester?key={html.escape(k)}</code>\n\n"
-                                f"• 🔐 <b>Пароль админа для входа с новых браузеров:</b> <code>{html.escape(ADMIN_WEB_PASSWORD)}</code>\n"
+                                f"<code>http://[fd7a:115c:a1e0::b62e:d84a]:{WEB_PORT}/harvester</code>\n\n"
+                                f"• 🔐 <b>Вход в веб-админку:</b> используйте пароль администратора\n"
                                 f"<i>🔄 Ссылка в этом сообщении и в меню /harvester обновляется автоматически</i>"
                             )
                             saved_ids = get_state("tunnel_msg_ids", {}) or {}
@@ -2604,8 +2781,14 @@ if __name__ == "__main__":
     web_thread = threading.Thread(target=start_web_admin_server, daemon=True)
     web_thread.start()
 
-    tunnel_thread = threading.Thread(target=start_cloudflared_tunnel_supervisor, daemon=True)
-    tunnel_thread.start()
+    if ENABLE_PUBLIC_TUNNEL:
+        tunnel_thread = threading.Thread(target=start_cloudflared_tunnel_supervisor, daemon=True)
+        tunnel_thread.start()
+    else:
+        logger.info(
+            "Публичный туннель выключен (ENABLE_PUBLIC_TUNNEL=false). "
+            "Для безопасного удалённого доступа используйте Tailscale или Cloudflare Access."
+        )
 
     print("🚀 Запуск Plotter EPS Telegram Bot (Roland VP-540 Edition)...")
     bot.infinity_polling(timeout=30, long_polling_timeout=25)

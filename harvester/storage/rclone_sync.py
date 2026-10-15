@@ -236,13 +236,18 @@ def ensure_local_eps_for_asset(asset_id: str) -> Optional[Path]:
     return None
 
 
-def copy_harvester_asset_to_hot_folder(asset_id: str) -> Optional[Path]:
+def copy_harvester_asset_to_hot_folder(asset_id: str, admin_confirmed: bool = False) -> Optional[Path]:
     """
     Копирует выбранный макет из базы парсера (локально или подтягивая с Google Drive)
     прямо в сетевую папку плоттера /home/crybaby/Roland_HotFolder/Queue_EPS/.
+    Для макетов с license=unknown требуется явное подтверждение администратора (admin_confirmed=True).
     """
     asset = get_asset(asset_id)
     if not asset:
+        return None
+
+    lic = str(asset.get("license", "unknown")).lower().strip()
+    if lic == "unknown" and not admin_confirmed:
         return None
 
     eps_path = ensure_local_eps_for_asset(asset_id)

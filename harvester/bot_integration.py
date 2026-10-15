@@ -28,6 +28,7 @@ from harvester.config import (
     RCLONE_REMOTE,
 )
 from harvester.database import (
+    LICENSE_LABELS,
     get_all_state,
     get_asset,
     get_catalog_summary,
@@ -805,6 +806,33 @@ def register_harvester_bot_handlers(
 
             if action == "hot" and len(parts) >= 3:
                 aid = parts[2]
+                asset = get_asset(aid)
+                if not asset:
+                    bot.answer_callback_query(call.id, "⚠️ Макет не найден в базе", show_alert=True)
+                    return
+                if not is_admin_fn(uid):
+                    bot.answer_callback_query(call.id, "⛔ Отправка в Hot Folder доступна только администратору", show_alert=True)
+                    return
+
+                lic = str(asset.get("license", "unknown")).lower().strip()
+                if lic == "unknown":
+                    kb_confirm = InlineKeyboardMarkup()
+                    kb_confirm.row(
+                        InlineKeyboardButton("⚠️ Да, подтверждаю (админ)", callback_data=f"harv:hot_confirm:{aid}"),
+                        InlineKeyboardButton("❌ Отмена", callback_data="harv:home"),
+                    )
+                    bot.send_message(
+                        chat_id,
+                        f"⚠️ <b>Внимание: Лицензия не подтверждена, не печатать на продажу!</b>\n\n"
+                        f"Макет: <b>{html.escape(asset.get('title', aid))}</b>\n"
+                        f"Источник: <code>{html.escape(asset.get('source_name', 'web'))}</code>\n"
+                        f"Лицензия: <code>unknown</code>\n\n"
+                        f"Вы действительно хотите отправить этот макет на печать в Hot Folder плоттера?",
+                        reply_markup=kb_confirm,
+                    )
+                    bot.answer_callback_query(call.id)
+                    return
+
                 dest = copy_harvester_asset_to_hot_folder(aid)
                 if dest is None:
                     bot.answer_callback_query(call.id, "⚠️ Не удалось скопировать .EPS в Hot Folder", show_alert=True)
@@ -813,6 +841,24 @@ def register_harvester_bot_handlers(
                 bot.send_message(
                     chat_id,
                     f"🚀 <b>Макет из базы отправлен в Hot Folder плоттера!</b>\n"
+                    f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
+                    f"📂 Сетевой путь: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
+                )
+                return
+
+            if action == "hot_confirm" and len(parts) >= 3:
+                aid = parts[2]
+                if not is_admin_fn(uid):
+                    bot.answer_callback_query(call.id, "⛔ Доступно только администратору", show_alert=True)
+                    return
+                dest = copy_harvester_asset_to_hot_folder(aid, admin_confirmed=True)
+                if dest is None:
+                    bot.answer_callback_query(call.id, "⚠️ Не удалось скопировать .EPS в Hot Folder", show_alert=True)
+                    return
+                bot.answer_callback_query(call.id, "🚀 Отправлено в Hot Folder плоттера!")
+                bot.send_message(
+                    chat_id,
+                    f"🚀 <b>Макет (подтверждён админом) отправлен в Hot Folder плоттера!</b>\n"
                     f"📄 Файл: <code>{html.escape(dest.name)}</code>\n"
                     f"📂 Сетевой путь: <code>\\\\192.168.0.108\\Roland_HotFolder\\Queue_EPS\\{html.escape(dest.name)}</code>",
                 )
@@ -1089,14 +1135,29 @@ def render_harvester_web_catalog(
             f"&folder={urllib.parse.quote(f_v)}"
         )
 
-        hot_btn_html = (
-            f"""<form method="POST" action="/harvester_hot/{aid}" style="margin:0;flex:1;display:flex;">
-                <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
-                <button type="submit" class="btn btn-hot" style="width:100%;border:none;cursor:pointer;font-family:inherit;">{"✅ В Hot Folder" if in_hot else "🚀 В Hot Folder"}</button>
-            </form>"""
-            if is_admin
-            else f'<a class="btn btn-secondary" href="/harvester_file/{aid}/preview" target="_blank">🖼 Превью</a>'
-        )
+        lic = str(a.get("license", "unknown")).lower().strip()
+        if lic == "unknown":
+            lic_badge_html = '<div style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;margin-top:4px;">⚠️ Лицензия не подтверждена, не печатать на продажу</div>'
+            hot_btn_html = (
+                f"""<form method="POST" action="/harvester_hot/{aid}" style="margin:0;flex:1;display:flex;">
+                    <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+                    <input type="hidden" name="confirm_unlicensed" value="1" />
+                    <button type="submit" class="btn btn-hot" onclick="return confirm('⚠️ Внимание! Лицензия макета не подтверждена. Печать на продажу запрещена. Подтверждаете отправку в Hot Folder?');" style="width:100%;border:none;cursor:pointer;font-family:inherit;background:#991b1b;">{"✅ В Hot Folder" if in_hot else "⚠️ В Hot Folder (Подтвердить)"}</button>
+                </form>"""
+                if is_admin
+                else f'<a class="btn btn-secondary" href="/harvester_file/{aid}/preview" target="_blank">🖼 Превью</a>'
+            )
+        else:
+            lic_lbl = html.escape(LICENSE_LABELS.get(lic, lic))
+            lic_badge_html = f'<div style="background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:4px 8px;font-size:11px;margin-top:4px;">✓ {lic_lbl}</div>'
+            hot_btn_html = (
+                f"""<form method="POST" action="/harvester_hot/{aid}" style="margin:0;flex:1;display:flex;">
+                    <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}" />
+                    <button type="submit" class="btn btn-hot" style="width:100%;border:none;cursor:pointer;font-family:inherit;">{"✅ В Hot Folder" if in_hot else "🚀 В Hot Folder"}</button>
+                </form>"""
+                if is_admin
+                else f'<a class="btn btn-secondary" href="/harvester_file/{aid}/preview" target="_blank">🖼 Превью</a>'
+            )
 
         cards_html.append(
             f"""
@@ -1117,6 +1178,7 @@ def render_harvester_web_catalog(
                     <span>📄 <b>{eps_name}</b> ({mb:.1f} МБ)</span>
                     <span>📐 <b>{w_mm:g} × {h_mm:g} мм</b></span>
                     <span>🌐 <b>{html.escape(a['source_name'])}</b></span>
+                    {lic_badge_html}
                 </div>
                 <div class="card-actions">
                     <a class="btn btn-primary" href="/harvester_file/{aid}/eps">📥 Скачать .EPS</a>

@@ -2972,7 +2972,20 @@ class AdminWebHandler(BaseHTTPRequestHandler):
         if path.startswith("/harvester_hot/"):
             init_db()
             aid = post_params.get("asset_id", [""])[0] or path.strip("/").split("/")[-1]
-            dest = copy_harvester_asset_to_hot_folder(aid)
+            confirm_unlicensed = post_params.get("confirm_unlicensed", ["0"])[0] in ("1", "true", "yes")
+            asset = get_asset(aid)
+            if not asset:
+                self.send_error(404, "Asset not found")
+                return
+            lic = str(asset.get("license", "unknown")).lower().strip()
+            if lic == "unknown" and not confirm_unlicensed:
+                m = "⚠️ Ошибка: Лицензия не подтверждена, не печатать на продажу! Требуется подтверждение админа."
+                self.send_response(302)
+                self.send_header("Location", f"/harvester?msg={urllib.parse.quote(m)}")
+                self.end_headers()
+                return
+
+            dest = copy_harvester_asset_to_hot_folder(aid, admin_confirmed=confirm_unlicensed)
             fname = dest.name if dest else "ошибка"
             m = f"🚀 Макет {fname} отправлен в сетевую папку плоттера Roland_HotFolder!"
             self.send_response(302)

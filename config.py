@@ -25,3 +25,11 @@ LIVE_SPY_DEFAULT: bool = os.getenv("LIVE_SPY_DEFAULT", "false").lower() in ("tru
 
 # Время хранения заданий и файлов на сервере в часах (по умолчанию 168 часов = 7 дней)
 JOB_RETENTION_HOURS: float = float(os.getenv("JOB_RETENTION_HOURS", "168.0"))
+
+# Настройки безопасности парсера Sticker Harvester (Фаза 5)
+# По умолчанию сборщик отключен (false) во избежание рисков нарушения авторских прав и условий площадок
+HARVESTER_ENABLED: bool = os.getenv("HARVESTER_ENABLED", "false").lower() in ("true", "1", "yes")
+
+# По умолчанию публичный веб-каталог закрыт (false): /harvester и /harvester_file/* требуют авторизации админа
+PUBLIC_CATALOG: bool = os.getenv("PUBLIC_CATALOG", "false").lower() in ("true", "1", "yes")
+

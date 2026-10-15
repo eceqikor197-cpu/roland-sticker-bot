@@ -24,7 +24,13 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from harvester.config import BOT_TOKEN, RCLONE_REMOTE, TMP_DOWNLOAD_DIR, get_profile_for_category
+from harvester.config import (
+    BOT_TOKEN,
+    HARVESTER_ENABLED,
+    RCLONE_REMOTE,
+    TMP_DOWNLOAD_DIR,
+    get_profile_for_category,
+)
 from harvester.database import (
     get_conn,
     get_state,
@@ -302,6 +308,13 @@ def harvest_single_topic(
 
 
 def run_forever_daemon() -> None:
+    if not HARVESTER_ENABLED:
+        print("⏸ Sticker Harvester отключен в конфигурации (HARVESTER_ENABLED=false). Воркер не стартует.")
+        init_db()
+        set_state("status_text", "⏸ Модуль Sticker Harvester отключен в конфигурации (HARVESTER_ENABLED=false)")
+        set_state("enabled", False)
+        return
+
     print("🚜 Инициализация базы данных и стартового каталога тем (625+ категорий)...")
     init_db()
     total_topics = seed_database_if_needed()
@@ -351,6 +364,13 @@ def run_forever_daemon() -> None:
 
 
 def main() -> int:
+    if not HARVESTER_ENABLED:
+        print("⏸ Sticker Harvester отключен в конфигурации (HARVESTER_ENABLED=false). Запуск отменён.")
+        init_db()
+        set_state("status_text", "⏸ Модуль Sticker Harvester отключен в конфигурации (HARVESTER_ENABLED=false)")
+        set_state("enabled", False)
+        return 0
+
     parser = argparse.ArgumentParser(description="Sticker Harvester 24/7 Daemon")
     parser.add_argument("--once", action="store_true", help="Выполнить 1 цикл по одной теме и завершиться")
     parser.add_argument("--topic", type=str, default="", help="Запустить сбор по конкретной теме")

@@ -23,7 +23,10 @@ from telebot.types import (
     Message,
 )
 
-from harvester.config import RCLONE_REMOTE
+from harvester.config import (
+    HARVESTER_ENABLED,
+    RCLONE_REMOTE,
+)
 from harvester.database import (
     get_all_state,
     get_asset,
@@ -103,6 +106,17 @@ def format_ts_msk(ts: float) -> str:
 
 
 def build_harvester_home_view(is_admin: bool = False) -> Tuple[str, InlineKeyboardMarkup]:
+    if not HARVESTER_ENABLED:
+        text = (
+            "📦 <b>База Стикерпаков и Макетов (Roland Print & Cut)</b>\n\n"
+            "⏸ <b>Модуль отключён</b>\n"
+            "Автономный сборщик и каталог отключены в конфигурации сервера (<code>HARVESTER_ENABLED=false</code>)."
+        )
+        kb = InlineKeyboardMarkup()
+        if is_admin:
+            kb.row(InlineKeyboardButton("👑 Панель администратора", callback_data="admin:refresh"))
+        return text, kb
+
     init_db()
     st = get_all_state()
     summary = get_catalog_summary()
@@ -828,6 +842,34 @@ def render_harvester_web_catalog(
     is_admin: bool = False,
     csrf_token: str = "",
 ) -> bytes:
+    if not HARVESTER_ENABLED:
+        disabled_html = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>База макетов Harvester — Модуль отключён</title>
+  <style>
+    body { background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 32px; max-width: 540px; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); }
+    h1 { font-size: 22px; margin-top: 0; color: #e2e8f0; }
+    p { color: #94a3b8; font-size: 15px; line-height: 1.5; margin: 16px 0; }
+    .badge { display: inline-block; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 9999px; padding: 6px 14px; font-weight: 600; font-size: 13px; margin-bottom: 12px; }
+    .back { display: inline-block; margin-top: 16px; background: #e11d48; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">⏸ МОДУЛЬ ОТКЛЮЧЁН</div>
+    <h1>Sticker Harvester 24/7</h1>
+    <p>Автономный модуль сбора и каталог макетов отключены в настройках сервера (<code>HARVESTER_ENABLED=false</code>).</p>
+    <p>Для включения задайте <code>HARVESTER_ENABLED=true</code> в файле конфигурации <code>.env</code> или переменных окружения.</p>
+    <a class="back" href="/">⬅️ Вернуться в панель управления</a>
+  </div>
+</body>
+</html>"""
+        return disabled_html.encode("utf-8")
+
     init_db()
     st = get_all_state()
     summary = get_catalog_summary()

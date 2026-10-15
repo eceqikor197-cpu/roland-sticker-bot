@@ -80,7 +80,11 @@ JOBS_DIR.mkdir(parents=True, exist_ok=True)
 HOT_QUEUE_EPS_DIR.mkdir(parents=True, exist_ok=True)
 HOT_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
-from config import JOB_RETENTION_HOURS, LIVE_SPY_DEFAULT
+from config import (
+    JOB_RETENTION_HOURS,
+    LIVE_SPY_DEFAULT,
+    PUBLIC_CATALOG,
+)
 from harvester.config import BOT_TOKEN
 
 ADMIN_IDS = {int(x.strip()) for x in os.getenv("ADMIN_IDS", "870592714").split(",") if x.strip().isdigit()}
@@ -2820,6 +2824,11 @@ class AdminWebHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/harvester":
+            if not PUBLIC_CATALOG and not is_admin_user:
+                self.send_response(302)
+                self.send_header("Location", f"/login?next={urllib.parse.quote(self.path)}")
+                self.end_headers()
+                return
             cat_f = qs.get("cat", ["all"])[0]
             subcat_f = qs.get("subcat", ["all"])[0]
             folder_f = qs.get("folder", ["all"])[0]
@@ -2842,6 +2851,11 @@ class AdminWebHandler(BaseHTTPRequestHandler):
             return
 
         if path.startswith("/harvester_file/"):
+            if not PUBLIC_CATALOG and not is_admin_user:
+                self.send_response(302)
+                self.send_header("Location", f"/login?next={urllib.parse.quote(self.path)}")
+                self.end_headers()
+                return
             parts = path.strip("/").split("/")
             if len(parts) == 3:
                 _, aid, kind = parts

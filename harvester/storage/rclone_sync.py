@@ -265,9 +265,11 @@ def copy_harvester_asset_to_hot_folder(asset_id: str, admin_confirmed: bool = Fa
     dest_eps = HOT_QUEUE_EPS_DIR / f"{hot_base}.eps"
     shutil.copy2(eps_path, dest_eps)
 
-    prev_path = Path(asset.get("local_preview_path", ""))
-    if prev_path.exists():
-        shutil.copy2(prev_path, HOT_PREVIEWS_DIR / f"{hot_base}.jpg")
+    prev_str = (asset.get("local_preview_path") or "").strip()
+    if prev_str:
+        prev_path = Path(prev_str)
+        if prev_path.is_file():
+            shutil.copy2(prev_path, HOT_PREVIEWS_DIR / f"{hot_base}.jpg")
 
     mark_asset_in_hot_folder(asset_id)
     return dest_eps

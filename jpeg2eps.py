@@ -117,6 +117,15 @@ def extract_foreground_mask(
 
     bg_candidates = (diff <= effective_tol) & (grad < 32.0)
 
+    # Мягкая тень/подсветка под стикером: нейтральные (без цвета) плавные пятна, которые темнее
+    # или светлее фона. Если оставить их в маске, контур реза уходит в тень и получается
+    # неровным. Отдаём такие пиксели фону, но только если они связаны с фоном по краю кадра
+    # (ниже это решает поиск связных областей), поэтому серые детали внутри стикера не трогаем.
+    chroma_diff = np.hypot(lab[:, :, 1] - bg_lab[1], lab[:, :, 2] - bg_lab[2])
+    lum_diff = np.abs(lab[:, :, 0] - bg_lab[0])
+    shadow_like = (chroma_diff <= 6.0) & (lum_diff <= 70.0) & (grad < 12.0)
+    bg_candidates |= shadow_like
+
     labeled, _ = ndimage.label(bg_candidates)
     border_labels = np.unique(
         np.concatenate(

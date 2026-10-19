@@ -870,6 +870,20 @@ from pricing import calculate_nesting_and_price
 
 
 
+def _draw_dashed_rect(img: np.ndarray, p1: Tuple[int, int], p2: Tuple[int, int], color, dash: int = 6, gap: int = 4) -> None:
+    """Пунктирный прямоугольник (в OpenCV нет штатного пунктира)."""
+    (xa, ya), (xb, yb) = p1, p2
+    step = dash + gap
+    for x in range(xa, xb, step):
+        xe = min(x + dash, xb)
+        cv2.line(img, (x, ya), (xe, ya), color, 1, cv2.LINE_AA)
+        cv2.line(img, (x, yb), (xe, yb), color, 1, cv2.LINE_AA)
+    for y in range(ya, yb, step):
+        ye = min(y + dash, yb)
+        cv2.line(img, (xa, y), (xa, ye), color, 1, cv2.LINE_AA)
+        cv2.line(img, (xb, y), (xb, ye), color, 1, cv2.LINE_AA)
+
+
 def render_a4_comparison_preview(
     sticker_preview_rgb: np.ndarray,
     item_w_mm: float,
@@ -970,7 +984,7 @@ def render_a4_comparison_preview(
 
     st_thumb = cv2.resize(sticker_src, (st_w_px, st_h_px), interpolation=cv2.INTER_AREA)
 
-    # Если стикер помещается на А4 — рисуем сетку на А4 (первый стикер ярко, остальные полупрозрачно с пунктиром)
+    # Если стикер помещается на А4 — рисуем сетку на А4 (первый стикер ярко, остальные места только пунктирной рамкой)
     if st_w_px <= a4_w_px and st_h_px <= a4_h_px:
         total_grid_w = a4_cols * st_w_px + max(0, a4_cols - 1) * gap_px
         total_grid_h = a4_rows * st_h_px + max(0, a4_rows - 1) * gap_px
@@ -987,10 +1001,9 @@ def render_a4_comparison_preview(
                     panel[cy : cy + st_h_px, cx : cx + st_w_px] = st_thumb
                     cv2.rectangle(panel, (cx, cy), (cx + st_w_px, cy + st_h_px), (236, 0, 140), 2)
                 else:
-                    roi = panel[cy : cy + st_h_px, cx : cx + st_w_px]
-                    blended = cv2.addWeighted(roi, 0.55, st_thumb, 0.45, 0)
-                    panel[cy : cy + st_h_px, cx : cx + st_w_px] = blended
-                    cv2.rectangle(panel, (cx, cy), (cx + st_w_px, cy + st_h_px), (220, 140, 190), 1)
+                    # Остальные места на листе — только пунктирная рамка: в файле их нет,
+                    # это подсказка, сколько ещё таких войдёт на А4
+                    _draw_dashed_rect(panel, (cx, cy), (cx + st_w_px, cy + st_h_px), (150, 160, 180))
     else:
         # Стикер крупнее листа А4 — рисуем его поверх по центру, чтобы было видно сравнение с листом А4
         cx = max(4, (right_w - st_w_px) // 2)
@@ -1015,7 +1028,7 @@ def render_a4_comparison_preview(
         cv2.LINE_AA,
     )
     footer_txt = (
-        f"Sticker: {item_w_mm/10.0:.1f}x{item_h_mm/10.0:.1f} cm | Na A4: {a4_fit_qty} pcs"
+        f"Sticker: {item_w_mm/10.0:.1f}x{item_h_mm/10.0:.1f} cm | in file: 1 pc | fits A4: {a4_fit_qty} pcs"
         if st_w_px <= a4_w_px and st_h_px <= a4_h_px
         else f"Sticker: {item_w_mm/10.0:.1f}x{item_h_mm/10.0:.1f} cm (> A4)"
     )

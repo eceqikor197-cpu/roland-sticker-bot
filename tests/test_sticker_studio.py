@@ -95,5 +95,9 @@ def test_layout_save_update_load(client):
 
 
 def test_static_editor(client):
-    assert "Sticker Studio" in client.get("/").text
+    page = client.get("/").text
+    assert "Sticker Studio" in page
+    # Konva лежит рядом с редактором, без внешнего CDN
+    assert '<script src="vendor/konva-9.3.6.min.js">' in page
+    assert client.get("/vendor/konva-9.3.6.min.js").status_code == 200
     assert client.get("/surfaces.json").json()["devices"][0]["id"] == "macbook_air_13"

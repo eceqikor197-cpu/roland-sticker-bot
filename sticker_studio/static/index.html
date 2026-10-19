@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Sticker Studio</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/konva/9.3.6/konva.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Sticker Studio</div>
+    <select id="device-select" aria-label="Устройство"></select>
+    <div class="seg" id="zone-seg"></div>
+    <div class="swatches" id="color-swatches"></div>
+  </header>
+
+  <main class="workspace">
+    <section class="canvas-wrap">
+      <div class="toolbar">
+        <button id="btn-undo" title="Отменить">↶</button>
+        <button id="btn-redo" title="Повторить">↷</button>
+        <span class="sep"></span>
+        <button id="btn-front" title="Выше" disabled>⬆ Выше</button>
+        <button id="btn-back" title="Ниже" disabled>⬇ Ниже</button>
+        <button id="btn-flip" title="Отразить" disabled>⇋</button>
+        <button id="btn-dup" title="Дублировать" disabled>⧉</button>
+        <button id="btn-del" title="Удалить" disabled>🗑</button>
+        <span class="size-label" id="size-label"></span>
+        <span class="grow"></span>
+        <label class="check"><input type="checkbox" id="chk-logo"> Не закрывать логотип</label>
+        <button id="btn-bomb" class="accent" title="Разложить стикеры по всей поверхности">✨ Заполнить</button>
+        <button id="btn-clear" title="Очистить поверхность">Очистить</button>
+        <button id="btn-save">Сохранить</button>
+        <button id="btn-png">PNG</button>
+      </div>
+      <div id="stage" class="stage"></div>
+      <div class="warn" id="warn"></div>
+    </section>
+
+    <aside class="catalog" id="catalog">
+      <button class="catalog-toggle" id="catalog-toggle">Стикеры</button>
+      <div class="catalog-body">
+        <input type="search" id="search" placeholder="Поиск: котик, JDM, аниме…">
+        <div class="cats" id="cats"></div>
+        <div class="grid" id="grid"></div>
+        <button id="btn-more" class="more" hidden>Ещё</button>
+        <div class="empty" id="empty" hidden></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

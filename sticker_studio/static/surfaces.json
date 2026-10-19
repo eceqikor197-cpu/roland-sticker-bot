@@ -1,0 +1,83 @@
+{
+  "_comment": "Все размеры в миллиметрах, начало координат — левый верхний угол поверхности. Размеры MacBook приблизительные (по официальным габаритам корпуса), зоны клавиатуры и тачпада округлены.",
+  "colors": {
+    "silver": {"name": "Серебристый", "fill": "#e3e4e6"},
+    "space_gray": {"name": "Серый космос", "fill": "#7d7e80"},
+    "midnight": {"name": "Тёмная ночь", "fill": "#2e3642"},
+    "starlight": {"name": "Сияющая звезда", "fill": "#efe6d8"},
+    "space_black": {"name": "Космический чёрный", "fill": "#2f2f31"}
+  },
+  "devices": [
+    {
+      "id": "macbook_air_13",
+      "name": "MacBook Air 13\"",
+      "colors": ["silver", "space_gray", "midnight", "starlight"],
+      "zones": [
+        {
+          "id": "lid",
+          "name": "Крышка",
+          "width": 304.1, "height": 215.0, "radius": 9,
+          "logo": {"cx": 152.05, "cy": 107.5, "rx": 14, "ry": 17},
+          "forbidden": []
+        },
+        {
+          "id": "deck",
+          "name": "Под клавиатурой",
+          "width": 304.1, "height": 215.0, "radius": 9,
+          "forbidden": [
+            {"name": "Клавиатура", "x": 14, "y": 10, "w": 276, "h": 112, "r": 4},
+            {"name": "Тачпад", "x": 92, "y": 130, "w": 120, "h": 76, "r": 6}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "macbook_pro_14",
+      "name": "MacBook Pro 14\"",
+      "colors": ["silver", "space_black"],
+      "zones": [
+        {
+          "id": "lid",
+          "name": "Крышка",
+          "width": 312.6, "height": 221.2, "radius": 10,
+          "logo": {"cx": 156.3, "cy": 110.6, "rx": 15, "ry": 18},
+          "forbidden": []
+        },
+        {
+          "id": "deck",
+          "name": "Под клавиатурой",
+          "width": 312.6, "height": 221.2, "radius": 10,
+          "forbidden": [
+            {"name": "Клавиатура", "x": 16, "y": 12, "w": 280.6, "h": 116, "r": 4},
+            {"name": "Тачпад", "x": 88, "y": 134, "w": 136.6, "h": 80, "r": 6}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "macbook_pro_16",
+      "name": "MacBook Pro 16\"",
+      "colors": ["silver", "space_black"],
+      "zones": [
+        {
+          "id": "lid",
+          "name": "Крышка",
+          "width": 355.7, "height": 248.1, "radius": 11,
+          "logo": {"cx": 177.85, "cy": 124.05, "rx": 17, "ry": 20},
+          "forbidden": []
+        },
+        {
+          "id": "deck",
+          "name": "Под клавиатурой",
+          "width": 355.7, "height": 248.1, "radius": 11,
+          "forbidden": [
+            {"name": "Динамик", "x": 10, "y": 12, "w": 28, "h": 120, "r": 4},
+            {"name": "Клавиатура", "x": 44, "y": 12, "w": 267.7, "h": 120, "r": 4},
+            {"name": "Динамик", "x": 317.7, "y": 12, "w": 28, "h": 120, "r": 4},
+            {"name": "Тачпад", "x": 97.85, "y": 140, "w": 160, "h": 100, "r": 7}
+          ]
+        }
+      ]
+    }
+  ]
+}

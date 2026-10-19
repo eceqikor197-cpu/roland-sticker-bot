@@ -170,6 +170,9 @@
     return ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 < 128;
   }
 
+  // Силуэт яблока в квадрате 24×24 (центр примерно 12,12)
+  const APPLE_PATH = "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701";
+
   function drawSurface() {
     const z = zone();
     const fill = state.surfaces.colors[state.colorId].fill;
@@ -177,39 +180,43 @@
     bgGroup.destroyChildren();
     overlayGroup.destroyChildren();
 
+    // Алюминиевый корпус: мягкий градиент, тень на столе, фаска по краю
     bgGroup.add(new Konva.Rect({
       width: z.width, height: z.height, cornerRadius: z.radius,
       fillLinearGradientStartPoint: { x: 0, y: 0 },
-      fillLinearGradientEndPoint: { x: z.width, y: z.height },
-      fillLinearGradientColorStops: [0, shade(fill, 14), 1, shade(fill, -12)],
-      shadowColor: "#000", shadowBlur: 18, shadowOpacity: 0.35, shadowOffset: { x: 0, y: 4 },
+      fillLinearGradientEndPoint: { x: z.width * 0.6, y: z.height },
+      fillLinearGradientColorStops: [0, shade(fill, dark ? 10 : 8), 0.55, fill, 1, shade(fill, dark ? -8 : -14)],
+      shadowColor: "#000", shadowBlur: 22, shadowOpacity: 0.45, shadowOffset: { x: 0, y: 6 },
+    }));
+    // Блик анодированного алюминия
+    bgGroup.add(new Konva.Rect({
+      width: z.width, height: z.height, cornerRadius: z.radius,
+      fillLinearGradientStartPoint: { x: 0, y: 0 },
+      fillLinearGradientEndPoint: { x: z.width, y: z.height * 0.4 },
+      fillLinearGradientColorStops: [0, "rgba(255,255,255,0)", 0.35, `rgba(255,255,255,${dark ? 0.05 : 0.22})`, 0.5, "rgba(255,255,255,0)"],
+    }));
+    bgGroup.add(new Konva.Rect({
+      width: z.width, height: z.height, cornerRadius: z.radius,
+      stroke: shade(fill, dark ? -18 : -40), strokeWidth: 0.5,
+    }));
+    bgGroup.add(new Konva.Rect({
+      x: 0.7, y: 0.7, width: z.width - 1.4, height: z.height - 1.4, cornerRadius: Math.max(0, z.radius - 0.7),
+      stroke: `rgba(255,255,255,${dark ? 0.12 : 0.6})`, strokeWidth: 0.35,
     }));
 
-    if (z.logo) {
-      bgGroup.add(new Konva.Ellipse({
-        x: z.logo.cx, y: z.logo.cy, radiusX: z.logo.rx, radiusY: z.logo.ry,
-        fill: dark ? shade(fill, 22) : shade(fill, -18), opacity: 0.8,
-      }));
-    }
+    if (z.logo) drawLogo(z.logo, fill, dark);
+    if (z.id === "deck") drawDeckEdge(z, fill, dark);
 
-    // Запретные зоны (клавиатура, тачпад, динамики) рисуем поверх стикеров
+    // Клавиатура, тачпад и динамики рисуем поверх стикеров: на них клеить нельзя
     for (const f of forbiddenZones()) {
       if (f.isLogo) {
         overlayGroup.add(new Konva.Ellipse({
-          x: f.cx, y: f.cy, radiusX: f.rx, radiusY: f.ry,
+          x: f.cx, y: f.cy, radiusX: f.rx + 2, radiusY: f.ry + 2,
           stroke: "#00aeef", strokeWidth: 0.6, dash: [2, 1.5],
         }));
-        continue;
-      }
-      overlayGroup.add(new Konva.Rect({
-        x: f.x, y: f.y, width: f.w, height: f.h, cornerRadius: f.r || 0,
-        fill: dark ? "#14161b" : shade(fill, -28), opacity: 0.92,
-      }));
-      if (f.name === "Клавиатура") drawKeys(f, dark ? "#262a33" : shade(fill, -45));
-      if (f.name === "Динамик") drawGrille(f, dark ? "#262a33" : shade(fill, -50));
-      if (f.name === "Тачпад") {
-        overlayGroup.children[overlayGroup.children.length - 1].fill(shade(fill, dark ? 8 : -6)).opacity(1);
-      }
+      } else if (f.name === "Клавиатура") drawKeyboard(f, fill, dark);
+      else if (f.name === "Тачпад") drawTrackpad(f, fill, dark);
+      else if (f.name === "Динамик") drawGrille(f, fill, dark);
     }
 
     // Обрезка стикеров по краю корпуса
@@ -217,6 +224,132 @@
       roundRectPath(ctx, 0, 0, z.width, z.height, z.radius);
     });
     fitWorld();
+  }
+
+  // Полированный логотип: зеркальный отблеск на светлых корпусах, тёмный глянец на тёмных
+  function drawLogo(logo, fill, dark) {
+    const s = (logo.ry * 2) / 24;
+    bgGroup.add(new Konva.Path({
+      data: APPLE_PATH,
+      x: logo.cx - 12 * s, y: logo.cy - 12 * s, scaleX: s, scaleY: s,
+      fillLinearGradientStartPoint: { x: 2, y: 0 },
+      fillLinearGradientEndPoint: { x: 22, y: 24 },
+      fillLinearGradientColorStops: dark
+        ? [0, shade(fill, 34), 0.5, shade(fill, 10), 1, shade(fill, 28)]
+        : [0, "#ffffff", 0.45, shade(fill, -30), 0.55, shade(fill, -6), 1, "#fbfbfb"],
+      shadowColor: dark ? "#000" : "#fff", shadowBlur: 0.6, shadowOpacity: 0.5, shadowOffset: { x: 0, y: 0.15 },
+    }));
+  }
+
+  // Выемка для открытия крышки у переднего края
+  function drawDeckEdge(z, fill, dark) {
+    bgGroup.add(new Konva.Rect({
+      x: z.width / 2 - 22, y: z.height - 2.4, width: 44, height: 2.4, cornerRadius: [2.4, 2.4, 0, 0],
+      fill: shade(fill, dark ? -14 : -22), opacity: 0.7,
+    }));
+  }
+
+  // Раскладка клавиатуры MacBook: ширина клавиш в долях, строки нормируются по ширине блока
+  const KEY_ROWS = [
+    { h: 0.82, keys: [["esc", 1.5], ...Array.from({ length: 12 }, () => ["", 1]), ["touchid", 1]] },
+    { keys: [..."`1234567890-=".split("").map((k) => [k, 1]), ["delete", 1.5]] },
+    { keys: [["tab", 1.5], ..."QWERTYUIOP[]\\".split("").map((k) => [k, 1])] },
+    { keys: [["caps lock", 1.8], ..."ASDFGHJKL;'".split("").map((k) => [k, 1]), ["return", 1.7]] },
+    { keys: [["shift", 2.3], ..."ZXCVBNM,./".split("").map((k) => [k, 1]), ["shift", 2.2]] },
+    { keys: [["fn", 1], ["control", 1], ["option", 1], ["command", 1.25], ["", 5], ["command", 1.25], ["option", 1], ["arrows", 3]] },
+  ];
+
+  function drawKeyboard(f, fill, dark) {
+    // Колодец клавиатуры чуть темнее корпуса
+    overlayGroup.add(new Konva.Rect({
+      x: f.x, y: f.y, width: f.w, height: f.h, cornerRadius: f.r || 3,
+      fill: shade(fill, dark ? -10 : -26),
+      stroke: shade(fill, dark ? -20 : -45), strokeWidth: 0.3,
+    }));
+    const pad = 1.2;
+    const gap = 1.1;
+    const units = KEY_ROWS.reduce((sum, r) => sum + (r.h || 1), 0);
+    const unitH = (f.h - pad * 2 - gap * (KEY_ROWS.length - 1)) / units;
+    const keyFill = "#1b1b1d";
+    const textFill = "#d8d8dc";
+    let y = f.y + pad;
+    for (const row of KEY_ROWS) {
+      const rh = unitH * (row.h || 1);
+      const total = row.keys.reduce((sum, [, u]) => sum + u, 0);
+      const unitW = (f.w - pad * 2 - gap * (row.keys.length - 1)) / total;
+      let x = f.x + pad;
+      for (const [label, u] of row.keys) {
+        const w = unitW * u;
+        if (label === "arrows") {
+          drawArrows(x, y, w, rh, keyFill, textFill);
+        } else {
+          overlayGroup.add(new Konva.Rect({
+            x, y, width: w, height: rh, cornerRadius: 1.1,
+            fill: keyFill, shadowColor: "#000", shadowBlur: 0.4, shadowOpacity: 0.5, shadowOffset: { x: 0, y: 0.25 },
+          }));
+          if (label === "touchid") {
+            overlayGroup.add(new Konva.Circle({ x: x + w / 2, y: y + rh / 2, radius: Math.min(w, rh) * 0.36, stroke: "#4a4a4f", strokeWidth: 0.3 }));
+          } else if (label) {
+            const big = label.length === 1;
+            overlayGroup.add(new Konva.Text({
+              x: big ? x : x + 1.2, y: big ? y : y + rh - 3.4, width: big ? w : w - 2, height: big ? rh : 3,
+              text: label, fontSize: big ? Math.min(3.4, rh * 0.32) : 1.7,
+              fontFamily: "-apple-system, 'Helvetica Neue', Arial, sans-serif",
+              fill: textFill, align: big ? "center" : "left", verticalAlign: big ? "middle" : "top",
+            }));
+          }
+        }
+        x += w + gap;
+      }
+      y += rh + gap;
+    }
+  }
+
+  // Стрелки в виде перевёрнутой «Т»
+  function drawArrows(x, y, w, h, keyFill, textFill) {
+    const gap = 0.6;
+    const kw = (w - gap * 2) / 3;
+    const kh = (h - gap) / 2;
+    const keys = [
+      [x, y + kh + gap, "◀"], [x + kw + gap, y, "▲"], [x + kw + gap, y + kh + gap, "▼"], [x + (kw + gap) * 2, y + kh + gap, "▶"],
+    ];
+    for (const [kx, ky, t] of keys) {
+      overlayGroup.add(new Konva.Rect({ x: kx, y: ky, width: kw, height: kh, cornerRadius: 0.8, fill: keyFill }));
+      overlayGroup.add(new Konva.Text({
+        x: kx, y: ky, width: kw, height: kh, text: t, fontSize: 1.6, fill: textFill, align: "center", verticalAlign: "middle",
+      }));
+    }
+  }
+
+  function drawTrackpad(f, fill, dark) {
+    overlayGroup.add(new Konva.Rect({
+      x: f.x, y: f.y, width: f.w, height: f.h, cornerRadius: f.r || 6,
+      fillLinearGradientStartPoint: { x: f.x, y: f.y },
+      fillLinearGradientEndPoint: { x: f.x + f.w, y: f.y + f.h },
+      fillLinearGradientColorStops: [0, shade(fill, dark ? 6 : 6), 1, shade(fill, dark ? -4 : -10)],
+      stroke: shade(fill, dark ? -16 : -38), strokeWidth: 0.35,
+    }));
+    overlayGroup.add(new Konva.Rect({
+      x: f.x + 0.5, y: f.y + 0.5, width: f.w - 1, height: f.h - 1, cornerRadius: Math.max(0, (f.r || 6) - 0.5),
+      stroke: `rgba(255,255,255,${dark ? 0.08 : 0.5})`, strokeWidth: 0.25,
+    }));
+  }
+
+  // Решётка динамика: одна фигура вместо сотен кружков
+  function drawGrille(f, fill, dark) {
+    const color = shade(fill, dark ? -22 : -70);
+    overlayGroup.add(new Konva.Shape({
+      sceneFunc: (ctx) => {
+        ctx.fillStyle = color;
+        for (let y = f.y + 1.5; y <= f.y + f.h - 1.5; y += 1.6) {
+          for (let x = f.x + 1.5; x <= f.x + f.w - 1.5; x += 1.6) {
+            ctx.beginPath();
+            ctx.arc(x, y, 0.35, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      },
+    }));
   }
 
   function roundRectPath(ctx, x, y, w, h, r) {
@@ -227,31 +360,6 @@
     ctx.arcTo(x, y + h, x, y, r);
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
-  }
-
-  function drawKeys(f, color) {
-    const rows = 6;
-    const gap = 1.4;
-    const rowH = (f.h - gap * (rows + 1)) / rows;
-    const perRow = [14, 14, 14, 13, 12, 10];
-    for (let r = 0; r < rows; r++) {
-      const n = perRow[r];
-      const keyW = (f.w - gap * (n + 1)) / n;
-      for (let i = 0; i < n; i++) {
-        overlayGroup.add(new Konva.Rect({
-          x: f.x + gap + i * (keyW + gap), y: f.y + gap + r * (rowH + gap),
-          width: keyW, height: r === 0 ? rowH * 0.7 : rowH, cornerRadius: 1.2, fill: color,
-        }));
-      }
-    }
-  }
-
-  function drawGrille(f, color) {
-    for (let y = f.y + 3; y < f.y + f.h - 2; y += 3) {
-      for (let x = f.x + 3; x < f.x + f.w - 2; x += 3) {
-        overlayGroup.add(new Konva.Circle({ x, y, radius: 0.6, fill: color }));
-      }
-    }
   }
 
   function forbiddenZones() {

@@ -205,6 +205,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now roland-bot
 ```
 
+### Мини-приложение «Редактор наклейки»
+
+Настройка EPS в Telegram Mini App с живым превью наклейки, листа А4 и рулона: отдельная служба
+`python -m miniapp` и переменная `MINIAPP_URL`. Запуск и HTTPS-адрес описаны в [miniapp/README.md](miniapp/README.md).
+
 ---
 
 ## 🔒 Безопасная схема доступа к админке

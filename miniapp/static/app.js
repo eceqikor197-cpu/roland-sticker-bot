@@ -141,7 +141,7 @@ function renderSummary(st) {
     if (q) parts.push(`<span class="price">лист ~${fmtRub(q.a4_retail_rub)} · себест. ${fmtRub(q.a4_cost_rub)}</span>`);
   } else if (m === 'roll') {
     const lay = rollLayout(geo.cell_w_mm, geo.cell_h_mm, params.nesting_qty, params.roll_width_mm);
-    parts.push(`<span><b>${params.nesting_qty} шт</b>, ${lay.cols} в ряд, ${(lay.length / 1000).toFixed(2)} м</span>`);
+    parts.push(`<span><b>${params.nesting_qty} шт</b>, ${lay.cols} в ряд, ${(lay.length / 1000).toFixed(2).replace('.', ',')} м</span>`);
     if (q) parts.push(`<span class="price">~${fmtRub(q.retail_rub)} (${String(q.unit_rub).replace('.', ',')} ₽/шт) · себест. ${fmtRub(q.cost_rub)}</span>`);
   } else {
     parts.push(`<span>На А4 войдёт: <b>${fit.fit} шт</b></span>`);

@@ -107,8 +107,18 @@ export function renderCell(st, k, { lineWidthPx = 1.5 } = {}) {
     fillDilated(ctx, st, k, off, COLORS.backing);
   }
   if (st.art) {
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(st.art, geo.pad_mm * k, geo.pad_mm * k, geo.art_w_mm * k, geo.art_h_mm * k);
+    // Всё, что за контуром реза, плоттер отрежет: показываем рисунок только внутри него
+    const art = makeCanvas(c.width, c.height);
+    const a = art.getContext('2d');
+    a.imageSmoothingQuality = 'high';
+    a.drawImage(st.art, geo.pad_mm * k, geo.pad_mm * k, geo.art_w_mm * k, geo.art_h_mm * k);
+    // Маску рисуем отдельно: fillDilated делает заливку и обводку двумя операциями,
+    // а destination-in пересёк бы их друг с другом
+    const mask = makeCanvas(c.width, c.height);
+    fillDilated(mask.getContext('2d'), st, k, off, '#000');
+    a.globalCompositeOperation = 'destination-in';
+    a.drawImage(mask, 0, 0);
+    ctx.drawImage(art, 0, 0);
   }
   outlineDilated(ctx, st, k, off, COLORS.cut, lineWidthPx);
   if (perf === 'die_cut') {
@@ -301,7 +311,7 @@ export function drawRoll(canvas, st) {
   const lenMm = lay.length + 20;
   const k = Math.min((w - 24) / rollW, (h - 48) / lenMm);
   const rx = (w - rollW * k) / 2;
-  const ry = 26;
+  const ry = Math.max(26, (h - lenMm * k) / 2);
 
   ctx.fillStyle = '#eef1f5';
   ctx.fillRect(rx, ry, rollW * k, lenMm * k);
@@ -327,6 +337,6 @@ export function drawRoll(canvas, st) {
     ctx.fillRect(ox, oy, lay.width * k, lay.length * k);
   }
   label(ctx, `рулон ${fmt(rollW)} мм`, w / 2, 12);
-  label(ctx, `${lay.cols} в ряд × ${lay.rows} ряд., длина ${(lay.length / 1000).toFixed(2)} м`, w / 2, Math.min(h - 10, ry + lenMm * k + 14));
+  label(ctx, `${lay.cols} в ряд × ${lay.rows} ряд., длина ${(lay.length / 1000).toFixed(2).replace('.', ',')} м`, w / 2, Math.min(h - 10, ry + lenMm * k + 14));
   return lay;
 }

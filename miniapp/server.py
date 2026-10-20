@@ -288,7 +288,6 @@ def create_app(
         lock = job_lock(job_id)
         if not lock.acquire(blocking=False):
             raise HTTPException(409, "Этот макет уже конвертируется, подождите")
-        before = float(meta.get("updated_at") or 0.0)
         try:
             check_rate(who.user_id, who.is_admin)
             values = params.to_dict()
@@ -302,6 +301,8 @@ def create_app(
             if owner_id == who.user_id:
                 storage_update_user_prefs(who.user_id, **values)
             send = deliver or _default_deliver()
+            # storage_update_job выше уже сдвинул updated_at, успех конвертации видно по более позднему
+            before = time.time()
             send(
                 chat_id=who.user_id,
                 user_id=owner_id,
@@ -313,7 +314,7 @@ def create_app(
         finally:
             lock.release()
         fresh = storage_get_job(job_id) or {}
-        if float(fresh.get("updated_at") or 0.0) <= before:
+        if float(fresh.get("updated_at") or 0.0) < before:
             # process_and_send_job сам сообщил об ошибке в чат, здесь только говорим редактору
             raise HTTPException(500, "Не удалось сделать EPS, подробности в чате с ботом")
         return {

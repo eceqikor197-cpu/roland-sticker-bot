@@ -105,6 +105,7 @@ def create_app(
     deliver: Optional[Callable[..., None]] = None,
     converter: Optional[Callable[..., Any]] = None,
     max_per_minute: int = 6,
+    max_concurrent: int = 2,
 ) -> FastAPI:
     """Собирает приложение. Аргументы нужны для тестов; в бою всё берётся из config и бота."""
     token = bot_token if bot_token is not None else PLOTTER_BOT_TOKEN
@@ -115,6 +116,8 @@ def create_app(
     app.state.locks = {}
     app.state.locks_guard = threading.Lock()
     app.state.recent = {}
+    # Сколько конвертаций этот процесс делает одновременно (у бота свой такой же лимит)
+    conversions = threading.BoundedSemaphore(max(1, max_concurrent))
 
     def job_lock(job_id: str) -> threading.Lock:
         with app.state.locks_guard:
@@ -254,23 +257,24 @@ def create_app(
         tmp = Path(tempfile.mkdtemp(prefix="miniapp_check_", dir=str(job_dir)))
         try:
             preview = tmp / "preview.png"
-            convert(
-                input_path=job_dir / str(meta.get("input_filename", "input.jpg")),
-                output_eps=tmp / "check.eps",
-                size_mm=params.size_mm,
-                offset_mm=params.offset_mm,
-                bg_tolerance=12.0,
-                keep_background=params.keep_background,
-                preview_png_path=preview,
-                perf_cut_mode=params.perf_cut_mode,
-                nesting_qty=params.nesting_qty,
-                roll_width_mm=params.roll_width_mm,
-                stretch_x=params.stretch_x,
-                stretch_y=params.stretch_y,
-                fit_a4_sheet=params.fit_a4_sheet,
-                render_a4_guide_on_preview=False,
-                perf_cut_passes=params.perf_cut_passes,
-            )
+            with conversions:
+                convert(
+                    input_path=job_dir / str(meta.get("input_filename", "input.jpg")),
+                    output_eps=tmp / "check.eps",
+                    size_mm=params.size_mm,
+                    offset_mm=params.offset_mm,
+                    bg_tolerance=12.0,
+                    keep_background=params.keep_background,
+                    preview_png_path=preview,
+                    perf_cut_mode=params.perf_cut_mode,
+                    nesting_qty=params.nesting_qty,
+                    roll_width_mm=params.roll_width_mm,
+                    stretch_x=params.stretch_x,
+                    stretch_y=params.stretch_y,
+                    fit_a4_sheet=params.fit_a4_sheet,
+                    render_a4_guide_on_preview=False,
+                    perf_cut_passes=params.perf_cut_passes,
+                )
             return Response(preview.read_bytes(), media_type="image/png", headers={"Cache-Control": "no-store"})
         except HTTPException:
             raise
@@ -285,32 +289,40 @@ def create_app(
         """Сохраняет параметры, делает EPS и отправляет превью и файл в чат (как кнопки бота)."""
         job_dir, meta = load_job(job_id, who)
         params = JobParams.from_dict(body.model_dump())
+        # Силуэт берём до захвата блокировки макета: get_source сам берёт ту же блокировку
+        crop = _crop_size(get_source(job_dir, meta, params.keep_background))
         lock = job_lock(job_id)
         if not lock.acquire(blocking=False):
             raise HTTPException(409, "Этот макет уже конвертируется, подождите")
         try:
             check_rate(who.user_id, who.is_admin)
             values = params.to_dict()
+            owner_id = int(meta.get("user_id", who.user_id))
+            if owner_id == who.user_id:
+                storage_update_user_prefs(who.user_id, **values)
+            # Размер одной наклейки: бот считает по нему цену и «шт на А4», а в режиме А4/рулона
+            # сам его не знает (в EPS уже весь лист). Раньше он брался из прошлой одиночной конвертации.
+            geo = geometry.item_geometry(*crop, params)
+            values["single_w_mm"] = geo["cell_w_mm"]
+            values["single_h_mm"] = geo["cell_h_mm"]
             storage_update_job(
                 job_id,
                 **{k: (int(v) if isinstance(v, bool) else v) for k, v in values.items()},
                 menu_tab="main",
             )
             _sync_meta_file(job_dir, values)
-            owner_id = int(meta.get("user_id", who.user_id))
-            if owner_id == who.user_id:
-                storage_update_user_prefs(who.user_id, **values)
             send = deliver or _default_deliver()
             # storage_update_job выше уже сдвинул updated_at, успех конвертации видно по более позднему
             before = time.time()
-            send(
-                chat_id=who.user_id,
-                user_id=owner_id,
-                job_dir=job_dir,
-                status_msg_id=None,
-                was_compressed_photo=False,
-                action_title="Мини-приложение",
-            )
+            with conversions:
+                send(
+                    chat_id=who.user_id,
+                    user_id=owner_id,
+                    job_dir=job_dir,
+                    status_msg_id=None,
+                    was_compressed_photo=False,
+                    action_title="Мини-приложение",
+                )
         finally:
             lock.release()
         fresh = storage_get_job(job_id) or {}
@@ -331,6 +343,10 @@ def create_app(
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
+
+
+def _crop_size(source: Dict[str, Any]) -> tuple[int, int]:
+    return int(source["crop_w_px"]), int(source["crop_h_px"])
 
 
 def _sync_meta_file(job_dir: Path, values: Dict[str, Any]) -> None:

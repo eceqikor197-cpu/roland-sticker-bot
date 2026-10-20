@@ -59,6 +59,16 @@ ADMIN_IDS: set[int] = {
 # Разрешение обычным пользователям отправлять задания напрямую в Hot Folder без подтверждения
 ALLOW_USER_HOT_FOLDER: bool = os.getenv("ALLOW_USER_HOT_FOLDER", "false").lower() in ("true", "1", "yes")
 
+# Мини-приложение «Редактор наклейки» (Telegram Mini App, пакет miniapp/).
+# MINIAPP_URL — публичный HTTPS-адрес сервера мини-апки (Tailscale Funnel или Cloudflare Tunnel).
+# Пока он не задан, бот работает по-старому, через кнопки.
+_miniapp_url = os.getenv("MINIAPP_URL", "").strip().rstrip("/")
+MINIAPP_URL: str = _miniapp_url if _miniapp_url.startswith("https://") else ""
+MINIAPP_HOST: str = os.getenv("MINIAPP_HOST", "127.0.0.1")
+MINIAPP_PORT: int = int(os.getenv("MINIAPP_PORT", "8096"))
+# Ставить ли кнопку меню бота (слева от поля ввода), которая открывает список макетов
+MINIAPP_MENU_BUTTON: bool = os.getenv("MINIAPP_MENU_BUTTON", "true").lower() in ("true", "1", "yes")
+
 # Директории рабочих файлов и Hot Folder
 WORK_DIR: Path = BASE_DIR / "bot_workspace"
 JOBS_DIR: Path = WORK_DIR / "jobs"

@@ -27,7 +27,7 @@ from bot.jobs import (
     process_and_send_job,
     save_json_file,
 )
-from bot.keyboards import is_admin
+from bot.keyboards import build_upload_keyboard, is_admin, miniapp_enabled
 from config import (
     ADMIN_IDS,
     JOBS_DIR,
@@ -199,6 +199,78 @@ def _update_user_prefs(user_id: int, **kwargs: Any) -> Dict[str, Any]:
         return storage_update_user_prefs(user_id, **kwargs)
 
 
+def _write_job_input(job_dir: Path, user_id: int, orig_filename: str, data: bytes) -> Dict[str, Any]:
+    """Сохраняет исходник в папку задачи и создаёт meta.json + запись в storage."""
+    ext = Path(orig_filename).suffix.lower() or ".jpg"
+    safe_stem = (
+        re.sub(r"[^\w\-. ()А-Яа-яЁё]+", "_", Path(orig_filename).stem).strip()
+        or "sticker"
+    )
+    input_filename = f"input{ext}"
+    (job_dir / input_filename).write_bytes(data)
+
+    meta = {
+        "job_id": job_dir.name,
+        "user_id": user_id,
+        "orig_stem": safe_stem,
+        "input_filename": input_filename,
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
+    save_json_file(job_dir / "meta.json", meta)
+    storage_save_job(meta)
+    return meta
+
+
+def _accept_upload_for_miniapp(
+    bot: Any,
+    message: Message,
+    file_id: str,
+    orig_filename: str,
+    jobs_dir: Path,
+    max_upload_mb: float,
+) -> None:
+    """Режим мини-апки: сохраняем макет без конвертации и сразу даём кнопку редактора.
+
+    Конвертация запускается из редактора («Получить EPS») или кнопкой «⚡ EPS по последним настройкам».
+    """
+    user = message.from_user
+    user_id = user.id
+    job_id = uuid.uuid4().hex[:10]
+    job_dir = jobs_dir / job_id
+    try:
+        file_info = bot.get_file(file_id)
+        downloaded = bot.download_file(file_info.file_path)
+        if len(downloaded) > max_upload_mb * 1024 * 1024:
+            bot.reply_to(message, f"⛔ Файл слишком большой. Максимальный размер загрузки: {max_upload_mb:g} МБ.")
+            return
+        job_dir.mkdir(parents=True, exist_ok=True)
+        _write_job_input(job_dir, user_id, orig_filename, downloaded)
+    except Exception as exc:
+        logger.exception("Error saving upload for miniapp, user %s", user_id)
+        if is_admin(user_id):
+            bot.reply_to(message, f"❌ <b>Не удалось сохранить файл:</b>\n<code>{html.escape(str(exc))}</code>")
+        else:
+            bot.reply_to(message, "❌ <b>Не удалось сохранить файл.</b>")
+        return
+
+    _record_user_activity(
+        user_id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        username=user.username,
+        action="Загрузка изображения (редактор)",
+        last_job_id=job_id,
+    )
+    bot.reply_to(
+        message,
+        "✅ <b>Макет загружен.</b>\n"
+        "Откройте редактор: там размер, кант, растяжение и раскладка на А4 или рулон видны сразу, "
+        "а готовый EPS придёт сюда в чат.",
+        reply_markup=build_upload_keyboard(job_id),
+    )
+
+
 def handle_media(message: Message) -> None:
     bot = _get_bot()
     jobs_dir = _get_jobs_dir()
@@ -297,6 +369,26 @@ def handle_media(message: Message) -> None:
                     tmp_path.unlink()
         return
 
+    # При загрузке нового макета сбрасываем тираж на 1 шт, пропорции на 1:1 и открываем главное меню
+    curr_p = _get_user_prefs(user_id)
+    new_off = curr_p.get("offset_mm", 2.5)
+    if new_off <= 0.0:
+        new_off = 2.5
+    reset_prefs = {
+        "nesting_qty": 1,
+        "keep_background": False,
+        "offset_mm": new_off,
+        "stretch_x": 1.0,
+        "stretch_y": 1.0,
+        "fit_a4_sheet": False,
+        "menu_tab": "main",
+    }
+
+    if miniapp_enabled():
+        _update_user_prefs(user_id, **reset_prefs)
+        _accept_upload_for_miniapp(bot, message, file_id, orig_filename, jobs_dir, max_upload_mb)
+        return
+
     can_convert, limit_reason = limiter.check_and_acquire_user_slot(user_id)
     if not can_convert:
         if limit_reason == "concurrent":
@@ -305,21 +397,7 @@ def handle_media(message: Message) -> None:
             bot.reply_to(message, "⏳ Лимит: не более 6 конвертаций в минуту. Пожалуйста, подождите немного.")
         return
 
-    # При загрузке нового макета сбрасываем тираж на 1 шт, пропорции на 1:1 и открываем главное меню
-    curr_p = _get_user_prefs(user_id)
-    new_off = curr_p.get("offset_mm", 2.5)
-    if new_off <= 0.0:
-        new_off = 2.5
-    _update_user_prefs(
-        user_id,
-        nesting_qty=1,
-        keep_background=False,
-        offset_mm=new_off,
-        stretch_x=1.0,
-        stretch_y=1.0,
-        fit_a4_sheet=False,
-        menu_tab="main",
-    )
+    _update_user_prefs(user_id, **reset_prefs)
 
     status_msg = bot.reply_to(
         message,
@@ -348,25 +426,7 @@ def handle_media(message: Message) -> None:
             limiter.release_user_slot(user_id, record_completed=False)
             return
 
-        ext = Path(orig_filename).suffix.lower() or ".jpg"
-        safe_stem = (
-            re.sub(r"[^\w\-. ()А-Яа-яЁё]+", "_", Path(orig_filename).stem).strip()
-            or "sticker"
-        )
-        input_filename = f"input{ext}"
-        input_path = job_dir / input_filename
-        input_path.write_bytes(downloaded)
-
-        meta = {
-            "job_id": job_id,
-            "user_id": user_id,
-            "orig_stem": safe_stem,
-            "input_filename": input_filename,
-            "created_at": time.time(),
-            "updated_at": time.time(),
-        }
-        save_json_file(job_dir / "meta.json", meta)
-        storage_save_job(meta)
+        _write_job_input(job_dir, user_id, orig_filename, downloaded)
 
         def on_queue_media() -> None:
             try:

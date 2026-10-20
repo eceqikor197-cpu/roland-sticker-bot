@@ -1,0 +1,749 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "crop_w_px": 803,
+   "crop_h_px": 323,
+   "params": {
+    "size_mm": 110.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 110.0,
+    "art_h_mm": 44.25,
+    "target_h_mm": 44.25,
+    "cut_w_mm": 115.0,
+    "cut_h_mm": 49.25,
+    "cell_w_mm": 120.685,
+    "cell_h_mm": 54.932,
+    "pad_mm": 5.342
+   },
+   "a4": {
+    "fit": 6,
+    "cols": 3,
+    "rows": 2,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 54.932
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 11,
+     "rows": 3,
+     "length": 170.796
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 4,
+     "rows": 25,
+     "length": 1445.3
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 54.932
+    }
+   ]
+  },
+  {
+   "crop_w_px": 803,
+   "crop_h_px": 323,
+   "params": {
+    "size_mm": 140.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 140.0,
+    "art_h_mm": 56.31,
+    "target_h_mm": 56.31,
+    "cut_w_mm": 145.0,
+    "cut_h_mm": 61.31,
+    "cell_w_mm": 152.204,
+    "cell_h_mm": 68.518,
+    "pad_mm": 6.102
+   },
+   "a4": {
+    "fit": 4,
+    "cols": 1,
+    "rows": 4,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 8,
+     "rows": 2,
+     "length": 140.036
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 8,
+     "rows": 4,
+     "length": 283.072
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 3,
+     "rows": 34,
+     "length": 2428.612
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 68.518
+    }
+   ]
+  },
+  {
+   "crop_w_px": 477,
+   "crop_h_px": 475,
+   "params": {
+    "size_mm": 70.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 70.0,
+    "art_h_mm": 69.71,
+    "target_h_mm": 69.71,
+    "cut_w_mm": 75.0,
+    "cut_h_mm": 74.71,
+    "cell_w_mm": 78.512,
+    "cell_h_mm": 78.218,
+    "pad_mm": 4.256
+   },
+   "a4": {
+    "fit": 6,
+    "cols": 2,
+    "rows": 3,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 78.218
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 16,
+     "rows": 2,
+     "length": 159.436
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 7,
+     "rows": 15,
+     "length": 1215.27
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 78.218
+    }
+   ]
+  },
+  {
+   "crop_w_px": 477,
+   "crop_h_px": 475,
+   "params": {
+    "size_mm": 70.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 5.0,
+    "keep_background": false,
+    "perf_cut_mode": "die_cut",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 70.0,
+    "art_h_mm": 69.71,
+    "target_h_mm": 69.71,
+    "cut_w_mm": 80.0,
+    "cut_h_mm": 79.71,
+    "cell_w_mm": 90.545,
+    "cell_h_mm": 90.252,
+    "pad_mm": 10.273
+   },
+   "a4": {
+    "fit": 6,
+    "cols": 2,
+    "rows": 3,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 90.252
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 14,
+     "rows": 2,
+     "length": 183.504
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 6,
+     "rows": 17,
+     "length": 1582.284
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 90.252
+    }
+   ]
+  },
+  {
+   "crop_w_px": 1200,
+   "crop_h_px": 800,
+   "params": {
+    "size_mm": 50.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 0.0,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 50.0,
+    "art_h_mm": 33.33,
+    "target_h_mm": 33.33,
+    "cut_w_mm": 50.0,
+    "cut_h_mm": 33.33,
+    "cell_w_mm": 52.5,
+    "cell_h_mm": 35.833,
+    "pad_mm": 1.25
+   },
+   "a4": {
+    "fit": 25,
+    "cols": 5,
+    "rows": 5,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 35.833
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 24,
+     "rows": 2,
+     "length": 74.666
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 10,
+     "rows": 10,
+     "length": 385.33
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 35.833
+    }
+   ]
+  },
+  {
+   "crop_w_px": 1200,
+   "crop_h_px": 800,
+   "params": {
+    "size_mm": 50.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 1.5,
+    "keep_background": false,
+    "perf_cut_mode": "sheet_frame",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 50.0,
+    "art_h_mm": 33.33,
+    "target_h_mm": 33.33,
+    "cut_w_mm": 53.0,
+    "cut_h_mm": 36.33,
+    "cell_w_mm": 62.5,
+    "cell_h_mm": 45.833,
+    "pad_mm": 6.25
+   },
+   "a4": {
+    "fit": 16,
+    "cols": 4,
+    "rows": 4,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 45.833
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 20,
+     "rows": 2,
+     "length": 94.666
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 9,
+     "rows": 12,
+     "length": 582.996
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 45.833
+    }
+   ]
+  },
+  {
+   "crop_w_px": 300,
+   "crop_h_px": 900,
+   "params": {
+    "size_mm": 297.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 4.0,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 99.0,
+    "art_h_mm": 297.0,
+    "target_h_mm": 297.0,
+    "cut_w_mm": 107.0,
+    "cut_h_mm": 305.0,
+    "cell_w_mm": 122.1,
+    "cell_h_mm": 320.1,
+    "pad_mm": 11.55
+   },
+   "a4": {
+    "fit": 1,
+    "cols": 1,
+    "rows": 1,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 320.1
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 3,
+     "length": 966.3
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 4,
+     "rows": 25,
+     "length": 8074.5
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 320.1
+    }
+   ]
+  },
+  {
+   "crop_w_px": 300,
+   "crop_h_px": 900,
+   "params": {
+    "size_mm": 30.0,
+    "stretch_x": 1.5,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 15.0,
+    "art_h_mm": 30.0,
+    "target_h_mm": 30.0,
+    "cut_w_mm": 20.0,
+    "cut_h_mm": 35.0,
+    "cell_w_mm": 21.533,
+    "cell_h_mm": 36.533,
+    "pad_mm": 3.267
+   },
+   "a4": {
+    "fit": 56,
+    "cols": 8,
+    "rows": 7,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 36.533
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 25,
+     "rows": 1,
+     "length": 36.533
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 24,
+     "rows": 5,
+     "length": 194.665
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 36.533
+    }
+   ]
+  },
+  {
+   "crop_w_px": 2000,
+   "crop_h_px": 1500,
+   "params": {
+    "size_mm": 100.0,
+    "stretch_x": 1.0,
+    "stretch_y": 3.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 100.0,
+    "art_h_mm": 225.0,
+    "target_h_mm": 225.0,
+    "cut_w_mm": 105.0,
+    "cut_h_mm": 230.0,
+    "cell_w_mm": 116.3,
+    "cell_h_mm": 241.3,
+    "pad_mm": 8.15
+   },
+   "a4": {
+    "fit": 1,
+    "cols": 1,
+    "rows": 1,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 241.3
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 11,
+     "rows": 3,
+     "length": 729.9
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 4,
+     "rows": 25,
+     "length": 6104.5
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 241.3
+    }
+   ]
+  },
+  {
+   "crop_w_px": 640,
+   "crop_h_px": 640,
+   "params": {
+    "size_mm": 1370.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 1370.0,
+    "art_h_mm": 1370.0,
+    "target_h_mm": 1370.0,
+    "cut_w_mm": 1375.0,
+    "cut_h_mm": 1375.0,
+    "cell_w_mm": 1447.062,
+    "cell_h_mm": 1447.062,
+    "pad_mm": 38.531
+   },
+   "a4": {
+    "fit": 1,
+    "cols": 1,
+    "rows": 1,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 1,
+     "rows": 10,
+     "length": 14497.62
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 1,
+     "rows": 25,
+     "length": 36248.55
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 1,
+     "rows": 100,
+     "length": 145003.2
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 1,
+     "rows": 3,
+     "length": 4347.186
+    }
+   ]
+  },
+  {
+   "crop_w_px": 640,
+   "crop_h_px": 480,
+   "params": {
+    "size_mm": 5.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 0.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 5.0,
+    "art_h_mm": 3.75,
+    "target_h_mm": 3.75,
+    "cut_w_mm": 6.0,
+    "cut_h_mm": 4.75,
+    "cell_w_mm": 6.25,
+    "cell_h_mm": 5.0,
+    "pad_mm": 0.625
+   },
+   "a4": {
+    "fit": 775,
+    "cols": 25,
+    "rows": 31,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 5.0
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 25,
+     "rows": 1,
+     "length": 5.0
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 64,
+     "rows": 2,
+     "length": 13.0
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 5.0
+    }
+   ]
+  },
+  {
+   "crop_w_px": 900,
+   "crop_h_px": 700,
+   "params": {
+    "size_mm": 85.0,
+    "stretch_x": 0.75,
+    "stretch_y": 1.25,
+    "offset_mm": 3.0,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 63.75,
+    "art_h_mm": 82.66,
+    "target_h_mm": 82.64,
+    "cut_w_mm": 69.75,
+    "cut_h_mm": 88.66,
+    "cell_w_mm": 73.95,
+    "cell_h_mm": 92.862,
+    "pad_mm": 5.1
+   },
+   "a4": {
+    "fit": 6,
+    "cols": 2,
+    "rows": 3,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 92.862
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 17,
+     "rows": 2,
+     "length": 188.724
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 7,
+     "rows": 15,
+     "length": 1434.93
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 92.862
+    }
+   ]
+  }
+ ]
+}

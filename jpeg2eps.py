@@ -1214,9 +1214,12 @@ def convert_image_to_plotter_eps(
     # 6a. Режим авто-заполнения листа А4 (210 × 297 мм)
     if fit_a4_sheet and lossless_rgb_for_eps is not None:
         a4_calc = calculate_nesting_and_price(single_item_w_mm, single_item_h_mm, qty=1, roll_width_mm=roll_width_mm)
-        cols = max(1, int(a4_calc["a4_cols"]))
-        rows = max(1, int(a4_calc["a4_rows"]))
         a4_rot = bool(a4_calc["a4_rotated"])
+        # pricing.py считает поворот как «наклейка повёрнута на портретном листе»: a4_cols идут
+        # поперёк 200 мм по высоте наклейки. Здесь поворачивается лист (альбомный, 297 мм по ширине),
+        # а наклейка нет, поэтому ряды и колонки меняются местами, иначе лист раздувается шире А4.
+        cols = max(1, int(a4_calc["a4_rows"] if a4_rot else a4_calc["a4_cols"]))
+        rows = max(1, int(a4_calc["a4_cols"] if a4_rot else a4_calc["a4_rows"]))
 
         sheet_w_mm = 297.0 if a4_rot else 210.0
         sheet_h_mm = 210.0 if a4_rot else 297.0

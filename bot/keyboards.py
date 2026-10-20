@@ -11,12 +11,13 @@ from __future__ import annotations
 import html
 from typing import Any, Dict, Optional, Tuple
 
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 from config import (
     ADMIN_IDS,
     HOT_QUEUE_EPS_DIR,
     LIVE_SPY_DEFAULT,
+    MINIAPP_URL,
     WEB_PORT,
 )
 from storage import (
@@ -54,6 +55,51 @@ def _get_hot_queue_dir():
         return HOT_QUEUE_EPS_DIR
 
 
+def _get_miniapp_url() -> str:
+    try:
+        import telegram_bot
+
+        return str(getattr(telegram_bot, "MINIAPP_URL", MINIAPP_URL) or "")
+    except Exception:
+        return MINIAPP_URL
+
+
+def miniapp_enabled() -> bool:
+    """Включена ли мини-апка (задан MINIAPP_URL)."""
+    return bool(_get_miniapp_url())
+
+
+def miniapp_button(job_id: str, text: str = "🎛 Настроить в редакторе") -> Optional[InlineKeyboardButton]:
+    """Кнопка Web App, открывающая мини-приложение на этом макете. None, если мини-апка не настроена."""
+    base = _get_miniapp_url()
+    if not base:
+        return None
+    return InlineKeyboardButton(text, web_app=WebAppInfo(url=f"{base}/?job={job_id}"))
+
+
+def _hot_folder_button(job_id: str, in_hot_folder: bool, hot_request_status: Optional[str]) -> InlineKeyboardButton:
+    allow_hot = _get_allow_user_hot_folder()
+    if in_hot_folder:
+        hot_lbl = "✅ Уже в Hot Folder плоттера (отправить ещё раз)"
+    elif hot_request_status == "pending":
+        hot_lbl = "⏳ Заявка ожидает подтверждения админа"
+    elif not allow_hot:
+        hot_lbl = "🚀 Запросить печать на плоттере (Hot Folder)"
+    else:
+        hot_lbl = "🚀 Отправить на ПК с плоттером (Hot Folder)"
+    return InlineKeyboardButton(hot_lbl, callback_data=f"job:{job_id}:hot:1")
+
+
+def build_upload_keyboard(job_id: str) -> InlineKeyboardMarkup:
+    """Клавиатура сразу после загрузки, когда включена мини-апка: редактор или быстрый EPS."""
+    kb = InlineKeyboardMarkup()
+    btn = miniapp_button(job_id)
+    if btn is not None:
+        kb.row(btn)
+    kb.row(InlineKeyboardButton("⚡ EPS по последним настройкам", callback_data=f"job:{job_id}:quick:1"))
+    return kb
+
+
 def build_job_keyboard(
     job_id: str,
     prefs: Dict[str, Any],
@@ -74,6 +120,15 @@ def build_job_keyboard(
     active_tab = menu_tab or str(prefs.get("menu_tab", "main"))
 
     kb = InlineKeyboardMarkup(row_width=2)
+
+    # С мини-апкой главное меню короткое: редактор и Hot Folder, старые кнопки за «Кнопки по-старому»
+    app_btn = miniapp_button(job_id)
+    home_tab = "classic" if app_btn is not None else "main"
+    if app_btn is not None and active_tab == "main":
+        kb.row(app_btn)
+        kb.row(_hot_folder_button(job_id, in_hot_folder, hot_request_status))
+        kb.row(InlineKeyboardButton("⚙️ Кнопки по-старому", callback_data=f"job:{job_id}:nav:classic"))
+        return kb
 
     # ПОДМЕНЮ 1: РАЗМЕР МАКЕТА
     if active_tab == "size":
@@ -130,7 +185,7 @@ def build_job_keyboard(
         kb.row(*row_s3)
 
         kb.row(
-            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:main")
+            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:{home_tab}")
         )
         return kb
 
@@ -162,7 +217,7 @@ def build_job_keyboard(
             InlineKeyboardButton("🔄 Сбросить пропорции 1:1", callback_data=f"job:{job_id}:rst:1")
         )
         kb.row(
-            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:main")
+            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:{home_tab}")
         )
         return kb
 
@@ -224,7 +279,7 @@ def build_job_keyboard(
             )
         )
         kb.row(
-            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:main")
+            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:{home_tab}")
         )
         return kb
 
@@ -263,7 +318,7 @@ def build_job_keyboard(
             ),
         )
         kb.row(
-            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:main")
+            InlineKeyboardButton("⬅️ Назад к основному меню", callback_data=f"job:{job_id}:nav:{home_tab}")
         )
         return kb
 
@@ -314,16 +369,10 @@ def build_job_keyboard(
     )
     kb.row(InlineKeyboardButton(bg_lbl, callback_data=f"job:{job_id}:bg:{bg_toggle_val}"))
 
-    allow_hot = _get_allow_user_hot_folder()
-    if in_hot_folder:
-        hot_lbl = "✅ Уже в Hot Folder плоттера (отправить ещё раз)"
-    elif hot_request_status == "pending":
-        hot_lbl = "⏳ Заявка ожидает подтверждения админа"
-    elif not allow_hot:
-        hot_lbl = "🚀 Запросить печать на плоттере (Hot Folder)"
-    else:
-        hot_lbl = "🚀 Отправить на ПК с плоттером (Hot Folder)"
-    kb.row(InlineKeyboardButton(hot_lbl, callback_data=f"job:{job_id}:hot:1"))
+    kb.row(_hot_folder_button(job_id, in_hot_folder, hot_request_status))
+    if app_btn is not None:
+        kb.row(app_btn)
+        kb.row(InlineKeyboardButton("⬅️ Короткое меню", callback_data=f"job:{job_id}:nav:main"))
 
     return kb
 

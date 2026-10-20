@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>Редактор наклейки</title>
+  <link rel="stylesheet" href="static/style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <main id="app">
+    <section id="view-list" class="view" hidden>
+      <h1>Мои макеты</h1>
+      <p class="hint">Пришлите боту картинку, и она появится здесь.</p>
+      <div id="job-list" class="job-list"></div>
+    </section>
+
+    <section id="view-editor" class="view" hidden>
+      <div class="preview-wrap">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-view="sticker" role="tab">Наклейка</button>
+          <button class="tab" data-view="a4" role="tab">Лист А4</button>
+          <button class="tab" data-view="roll" role="tab">Рулон</button>
+        </div>
+        <div class="canvas-box">
+          <canvas id="preview"></canvas>
+          <div id="loading" class="loading">Готовлю превью…</div>
+        </div>
+        <div id="summary" class="summary"></div>
+      </div>
+
+      <div class="panel">
+        <div class="group">
+          <div class="group-head">
+            <span>Размер</span>
+            <span id="size-label" class="value"></span>
+          </div>
+          <input id="size-range" type="range" min="0" max="1000" step="1" aria-label="Размер по длинной стороне">
+          <div class="chips" id="size-chips"></div>
+          <div class="wh">
+            <label>Ширина, мм<input id="w-input" type="number" inputmode="decimal" min="1" step="0.5"></label>
+            <button id="lock-btn" class="lock" type="button" aria-label="Замок пропорций">🔒</button>
+            <label>Высота, мм<input id="h-input" type="number" inputmode="decimal" min="1" step="0.5"></label>
+          </div>
+          <div class="row-note">
+            <span id="cut-size" class="hint"></span>
+            <button id="reset-stretch" class="link" type="button" hidden>Вернуть пропорции 1:1</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-head">
+            <span>Белый кант</span>
+            <span id="offset-label" class="value"></span>
+          </div>
+          <input id="offset-range" type="range" min="0" max="10" step="0.5" aria-label="Кант, мм">
+          <div class="chips" id="offset-chips"></div>
+        </div>
+
+        <div class="group">
+          <div class="group-head"><span>Фон картинки</span></div>
+          <div class="seg" id="bg-seg">
+            <button data-val="0">Вырезать</button>
+            <button data-val="1">Оставить</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-head"><span>Резка</span></div>
+          <div class="seg seg-col" id="perf-seg">
+            <button data-val="none"><b>Только наклейка</b><small>надсечка до подложки</small></button>
+            <button data-val="sheet_frame"><b>+ рамка листа</b><small>сквозной рез вокруг макета</small></button>
+            <button data-val="die_cut"><b>+ вырубка по контуру</b><small>каждая наклейка отдельно</small></button>
+          </div>
+          <div id="passes-box" hidden>
+            <div class="sub-head">Проходов сквозного реза</div>
+            <div class="seg" id="passes-seg">
+              <button data-val="1">1</button>
+              <button data-val="2">2</button>
+              <button data-val="3">3, толстая плёнка</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-head"><span>Тираж</span></div>
+          <div class="seg" id="mode-seg">
+            <button data-val="single">Одна</button>
+            <button data-val="a4">Лист А4</button>
+            <button data-val="roll">На рулон</button>
+          </div>
+          <div id="roll-box" hidden>
+            <div class="wh">
+              <label>Штук<input id="qty-input" type="number" inputmode="numeric" min="2" max="500" step="1"></label>
+            </div>
+            <div class="chips" id="qty-chips"></div>
+            <div class="sub-head">Ширина рулона</div>
+            <div class="seg" id="roll-seg"></div>
+          </div>
+        </div>
+
+        <div class="group actions">
+          <button id="check-btn" class="secondary" type="button">Точная проверка контура</button>
+          <button id="render-btn" class="primary" type="button">Получить EPS</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-error" class="view" hidden>
+      <h1>Не получилось открыть</h1>
+      <p id="error-text" class="hint"></p>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <span>Так режет плоттер</span>
+        <button id="modal-close" class="link" type="button">Закрыть</button>
+      </div>
+      <img id="modal-img" alt="Превью контура реза">
+      <p class="hint">Это настоящий результат конвертера. В чат он не отправлен.</p>
+    </div>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="static/app.js"></script>
+</body>
+</html>

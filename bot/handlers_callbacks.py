@@ -440,6 +440,10 @@ def handle_job_callback(call: CallbackQuery) -> None:
             _update_user_prefs(user_id, nesting_qty=q, fit_a4_sheet=False, menu_tab="layout")
             action_desc = f"Раскладка тиража {q} шт. на рулон"
             bot.answer_callback_query(call.id, f"Собираю раскладку {q} шт. на рулон...")
+        elif param == "quick":
+            # Кнопка после загрузки в режиме мини-апки: EPS по последним сохранённым настройкам
+            action_desc = "EPS по последним настройкам"
+            bot.answer_callback_query(call.id, "Делаю EPS по последним настройкам...")
         elif param == "bg":
             use_bg = (val_str == "1")
             meta["keep_background"] = use_bg

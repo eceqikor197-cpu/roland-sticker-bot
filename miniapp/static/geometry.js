@@ -4,6 +4,7 @@
 
 export const EXTRA_PERF_MM = 3.5;
 export const STRETCH_RASTER_CAP_PX = 4500;
+export const MAX_PX_PER_MM = 60;
 export const GAP_MM = 3.0;
 export const A4 = { w: 210, h: 297, usableW: 200, usableH: 287 };
 export const ROLL_MARGIN_MM = 10.0;
@@ -48,6 +49,13 @@ export function itemGeometry(cropW, cropH, p) {
     }
     objW = Math.max(32, pyRound(ow * rx));
     objH = Math.max(32, pyRound(oh * ry));
+  }
+
+  const densityCap = MAX_PX_PER_MM / (objW / Math.max(1, targetW));
+  if (densityCap < 1) {
+    const w = objW;
+    objW = Math.max(32, pyRound(w * densityCap));
+    objH = Math.max(32, pyRound(objH * densityCap));
   }
 
   const longestObj = Math.max(objW, objH);

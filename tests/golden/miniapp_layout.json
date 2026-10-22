@@ -642,9 +642,9 @@
     "target_h_mm": 3.75,
     "cut_w_mm": 6.0,
     "cut_h_mm": 4.75,
-    "cell_w_mm": 6.25,
-    "cell_h_mm": 5.0,
-    "pad_mm": 0.625
+    "cell_w_mm": 6.333,
+    "cell_h_mm": 5.083,
+    "pad_mm": 0.667
    },
    "a4": {
     "fit": 775,
@@ -658,28 +658,28 @@
      "roll_width_mm": 1370.0,
      "cols": 10,
      "rows": 1,
-     "length": 5.0
+     "length": 5.083
     },
     {
      "qty": 25,
      "roll_width_mm": 1370.0,
      "cols": 25,
      "rows": 1,
-     "length": 5.0
+     "length": 5.083
     },
     {
      "qty": 100,
      "roll_width_mm": 600.0,
-     "cols": 64,
+     "cols": 63,
      "rows": 2,
-     "length": 13.0
+     "length": 13.166
     },
     {
      "qty": 3,
      "roll_width_mm": 1000.0,
      "cols": 3,
      "rows": 1,
-     "length": 5.0
+     "length": 5.083
     }
    ]
   },
@@ -742,6 +742,192 @@
      "cols": 3,
      "rows": 1,
      "length": 92.862
+    }
+   ]
+  },
+  {
+   "crop_w_px": 512,
+   "crop_h_px": 96,
+   "params": {
+    "size_mm": 5000.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 5000.0,
+    "art_h_mm": 937.5,
+    "target_h_mm": 937.5,
+    "cut_w_mm": 5005.0,
+    "cut_h_mm": 942.5,
+    "cell_w_mm": 5273.438,
+    "cell_h_mm": 1210.938,
+    "pad_mm": 136.719
+   },
+   "a4": {
+    "fit": 1,
+    "cols": 1,
+    "rows": 1,
+    "rotated": false
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 1,
+     "rows": 10,
+     "length": 12136.38
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 1,
+     "rows": 25,
+     "length": 30345.45
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 1,
+     "rows": 100,
+     "length": 121390.8
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 1,
+     "rows": 3,
+     "length": 3638.814
+    }
+   ]
+  },
+  {
+   "crop_w_px": 4000,
+   "crop_h_px": 3000,
+   "params": {
+    "size_mm": 1.0,
+    "stretch_x": 1.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "none",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 1.0,
+    "art_h_mm": 0.75,
+    "target_h_mm": 0.75,
+    "cut_w_mm": 6.0,
+    "cut_h_mm": 5.75,
+    "cell_w_mm": 6.333,
+    "cell_h_mm": 6.083,
+    "pad_mm": 2.667
+   },
+   "a4": {
+    "fit": 682,
+    "cols": 22,
+    "rows": 31,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 6.083
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 25,
+     "rows": 1,
+     "length": 6.083
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 63,
+     "rows": 2,
+     "length": 15.166
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 6.083
+    }
+   ]
+  },
+  {
+   "crop_w_px": 4000,
+   "crop_h_px": 3000,
+   "params": {
+    "size_mm": 10.0,
+    "stretch_x": 2.0,
+    "stretch_y": 1.0,
+    "offset_mm": 2.5,
+    "keep_background": false,
+    "perf_cut_mode": "die_cut",
+    "perf_cut_passes": 2,
+    "nesting_qty": 1,
+    "fit_a4_sheet": false,
+    "roll_width_mm": 1370.0
+   },
+   "geometry": {
+    "art_w_mm": 20.0,
+    "art_h_mm": 7.5,
+    "target_h_mm": 7.5,
+    "cut_w_mm": 25.0,
+    "cut_h_mm": 12.5,
+    "cell_w_mm": 33.0,
+    "cell_h_mm": 20.5,
+    "pad_mm": 6.5
+   },
+   "a4": {
+    "fit": 64,
+    "cols": 8,
+    "rows": 8,
+    "rotated": true
+   },
+   "roll": [
+    {
+     "qty": 10,
+     "roll_width_mm": 1370.0,
+     "cols": 10,
+     "rows": 1,
+     "length": 20.5
+    },
+    {
+     "qty": 25,
+     "roll_width_mm": 1370.0,
+     "cols": 25,
+     "rows": 1,
+     "length": 20.5
+    },
+    {
+     "qty": 100,
+     "roll_width_mm": 600.0,
+     "cols": 16,
+     "rows": 7,
+     "length": 161.5
+    },
+    {
+     "qty": 3,
+     "roll_width_mm": 1000.0,
+     "cols": 3,
+     "rows": 1,
+     "length": 20.5
     }
    ]
   }

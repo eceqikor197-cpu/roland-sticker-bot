@@ -47,6 +47,11 @@ from config import (
     JOB_RETENTION_HOURS,
     JOBS_DIR,
     LIVE_SPY_DEFAULT,
+    MAX_SIZE_MM,
+    MAX_STRETCH,
+    MIN_SIZE_MM,
+    MIN_STRETCH,
+    clamp_finite,
 )
 from harvester.bot_integration import (
     check_and_consume_waiting_topic,
@@ -68,10 +73,6 @@ from web.pages import PERF_MODE_LABELS
 
 logger = logging.getLogger(__name__)
 
-MIN_SIZE_MM = 5.0
-MAX_SIZE_MM = 1370.0
-MIN_STRETCH = 0.1
-MAX_STRETCH = 10.0
 
 
 def _get_bot() -> Any:
@@ -540,8 +541,10 @@ def parse_size_text(text: str) -> Tuple[float, ...]:
             w_mm, h_mm = w_val * 10.0, h_val * 10.0
         else:
             w_mm, h_mm = w_val, h_val
-        w_mm = max(5.0, round(w_mm, 1))
-        h_mm = max(5.0, round(h_mm, 1))
+        w_mm = round(w_mm, 1)
+        h_mm = round(h_mm, 1)
+        if w_mm <= 0 or h_mm <= 0:
+            return ()
         return (w_mm, h_mm)
 
     # 2. Обычный ввод одной стороны ('8.5 см', '120 мм', '2.5 м')
@@ -555,7 +558,9 @@ def parse_size_text(text: str) -> Tuple[float, ...]:
             size_mm = val * 10.0
         else:
             size_mm = val
-        size_mm = max(5.0, round(size_mm, 1))
+        size_mm = round(size_mm, 1)
+        if size_mm <= 0:
+            return ()
         return (size_mm,)
 
     return ()
@@ -583,8 +588,8 @@ def handle_custom_size_text(message: Message) -> None:
     parsed = parse_size_text(raw_txt)
 
     if len(parsed) == 2:
-        w_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[0]))
-        h_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[1]))
+        w_mm = clamp_finite(parsed[0], MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
+        h_mm = clamp_finite(parsed[1], MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
         size_mm = max(w_mm, h_mm)
         uinfo = _record_user_activity(
             user.id,
@@ -612,8 +617,8 @@ def handle_custom_size_text(message: Message) -> None:
                 sx = w_mm / max(1.0, base_w_at_sz)
                 sy = h_mm / max(1.0, base_h_at_sz)
 
-        sx = max(MIN_STRETCH, min(MAX_STRETCH, round(sx, 4)))
-        sy = max(MIN_STRETCH, min(MAX_STRETCH, round(sy, 4)))
+        sx = clamp_finite(round(sx, 4), MIN_STRETCH, MAX_STRETCH, 1.0)
+        sy = clamp_finite(round(sy, 4), MIN_STRETCH, MAX_STRETCH, 1.0)
 
         _update_user_prefs(
             user.id,
@@ -696,13 +701,13 @@ def handle_custom_size_text(message: Message) -> None:
         bot.reply_to(
             message,
             "📎 <b>Онлайн-конвертер:</b> отправьте любую картинку (фото или файл без сжатия), чтобы получить готовый <code>.eps</code> с контуром реза.\n"
-            "📐 <b>Размер макета:</b> напишите желаемый размер, например: <code>8.5 см</code>, <code>120 мм</code>, <code>1.2 м</code> или <code>12x8 см</code> (до 1370 мм).\n"
+            "📐 <b>Размер макета:</b> напишите желаемый размер, например: <code>8.5 см</code>, <code>120 мм</code>, <code>1.2 м</code> или <code>12x8 см</code> (от 1 мм до 100 м).\n"
             "📦 <b>Готовые стикерпаки:</b> нажмите кнопку ниже, чтобы выбрать готовые макеты из базы!",
             reply_markup=kb,
         )
         return
 
-    size_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, parsed[0]))
+    size_mm = clamp_finite(parsed[0], MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
 
     _update_user_prefs(user.id, size_mm=size_mm, fit_a4_sheet=False)
     uinfo = _record_user_activity(

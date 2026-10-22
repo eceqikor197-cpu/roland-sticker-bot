@@ -42,6 +42,7 @@ __all__ = ["DecompressionBombError", "MAX_IMAGE_PIXELS"]
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 MM_TO_PT = 72.0 / 25.4  # 1 мм = 2.83464567 пунктов PostScript
+MAX_PX_PER_MM = 60.0  # ~1500 DPI, выше плоттер всё равно не печатает
 
 
 def load_original_image(image_path: Path) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -1137,6 +1138,17 @@ def convert_image_to_plotter_eps(
             fg_mask = cv2.resize(fg_mask, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
             _, fg_mask = cv2.threshold(fg_mask, 127, 255, cv2.THRESH_BINARY)
             silhouette = fill_external_silhouette(fg_mask)
+
+    # Для очень маленьких наклеек плотность пикселей ограничиваем (~1500 DPI): поля под кант
+    # считаются в пикселях, и без этого 1-мм наклейка из большого фото раздула бы холст до гигапикселей
+    cap_px_per_mm = MAX_PX_PER_MM / (float(silhouette.shape[1]) / max(1.0, target_obj_w_mm))
+    if cap_px_per_mm < 1.0:
+        new_w = max(32, int(round(silhouette.shape[1] * cap_px_per_mm)))
+        new_h = max(32, int(round(silhouette.shape[0] * cap_px_per_mm)))
+        orig_rgb = cv2.resize(orig_rgb, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        fg_mask = cv2.resize(fg_mask, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        _, fg_mask = cv2.threshold(fg_mask, 127, 255, cv2.THRESH_BINARY)
+        silhouette = fill_external_silhouette(fg_mask)
 
     obj_h, obj_w = silhouette.shape[:2]
     longest_obj_px = float(max(obj_w, obj_h))

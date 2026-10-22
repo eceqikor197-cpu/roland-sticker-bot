@@ -104,7 +104,7 @@ def test_quote_follows_params(client: TestClient) -> None:
     big = client.post("/api/v1/jobs/job1/quote", json={"size_mm": 150}, headers=headers(OWNER)).json()
     assert small["geometry"]["art_w_mm"] == pytest.approx(40, abs=0.01)
     assert small["pricing"]["a4_fit_qty"] > big["pricing"]["a4_fit_qty"]
-    bad = client.post("/api/v1/jobs/job1/quote", json={"size_mm": 2}, headers=headers(OWNER))
+    bad = client.post("/api/v1/jobs/job1/quote", json={"size_mm": 0}, headers=headers(OWNER))
     assert bad.status_code == 422
 
 

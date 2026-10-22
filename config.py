@@ -59,6 +59,25 @@ ADMIN_IDS: set[int] = {
 # Разрешение обычным пользователям отправлять задания напрямую в Hot Folder без подтверждения
 ALLOW_USER_HOT_FOLDER: bool = os.getenv("ALLOW_USER_HOT_FOLDER", "false").lower() in ("true", "1", "yes")
 
+# Допустимый размер макета по длинной стороне и растяжение по осям.
+# Рамки широкие: отсекают только явно нерабочие значения (0, отрицательные, nan/inf).
+# Растровый буфер конвертер ограничивает сам, поэтому большой размер в мм не тратит память.
+MIN_SIZE_MM: float = float(os.getenv("MIN_SIZE_MM", "1.0"))
+MAX_SIZE_MM: float = float(os.getenv("MAX_SIZE_MM", "100000.0"))  # 100 м
+MIN_STRETCH: float = 0.05  # меньше конвертер не принимает
+MAX_STRETCH: float = 100.0
+
+
+def clamp_finite(value: object, lo: float, hi: float, default: float) -> float:
+    """Приводит значение к float в рамках [lo, hi]; мусор (не число, nan, inf) заменяет на default."""
+    try:
+        v = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    if v != v or v in (float("inf"), float("-inf")):
+        return default
+    return max(lo, min(hi, v))
+
 # Мини-приложение «Редактор наклейки» (Telegram Mini App, пакет miniapp/).
 # MINIAPP_URL — публичный HTTPS-адрес сервера мини-апки (Tailscale Funnel или Cloudflare Tunnel).
 # Пока он не задан, бот работает по-старому, через кнопки.

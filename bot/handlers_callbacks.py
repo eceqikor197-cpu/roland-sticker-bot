@@ -38,6 +38,11 @@ from config import (
     ALLOW_USER_HOT_FOLDER,
     HOT_FOLDER_SMB_HOST,
     JOBS_DIR,
+    MAX_SIZE_MM,
+    MAX_STRETCH,
+    MIN_SIZE_MM,
+    MIN_STRETCH,
+    clamp_finite,
 )
 from storage import (
     get_job as storage_get_job,
@@ -51,10 +56,6 @@ from web.pages import PERF_MODE_LABELS
 
 logger = logging.getLogger(__name__)
 
-MIN_SIZE_MM = 5.0
-MAX_SIZE_MM = 1370.0
-MIN_STRETCH = 0.1
-MAX_STRETCH = 10.0
 
 
 def _get_bot() -> Any:
@@ -355,7 +356,7 @@ def handle_job_callback(call: CallbackQuery) -> None:
             action_desc = f"Кант {val_str} мм"
             bot.answer_callback_query(call.id, f"Отступ изменён на {val_str} мм. Пересчитываю...")
         elif param == "sz":
-            val_sz = max(MIN_SIZE_MM, min(MAX_SIZE_MM, float(val_str)))
+            val_sz = clamp_finite(val_str, MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
             meta["size_mm"] = val_sz
             meta["fit_a4_sheet"] = False
             meta["menu_tab"] = "size"
@@ -364,8 +365,9 @@ def handle_job_callback(call: CallbackQuery) -> None:
             action_desc = f"Размер {val_sz/10.0:g} см"
             bot.answer_callback_query(call.id, f"Размер изменён на {val_sz/10.0:g} см. Пересчитываю...")
         elif param == "dsz":
-            delta_mm = float(val_str)
-            new_sz = max(MIN_SIZE_MM, min(MAX_SIZE_MM, round(float(curr_layout.get("size_mm", 100.0)) + delta_mm, 1)))
+            delta_mm = clamp_finite(val_str, -MAX_SIZE_MM, MAX_SIZE_MM, 0.0)
+            cur_sz = clamp_finite(curr_layout.get("size_mm"), MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
+            new_sz = clamp_finite(round(cur_sz + delta_mm, 1), MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
             meta["size_mm"] = new_sz
             meta["fit_a4_sheet"] = False
             meta["menu_tab"] = "size"
@@ -374,8 +376,9 @@ def handle_job_callback(call: CallbackQuery) -> None:
             action_desc = f"Размер {new_sz/10.0:g} см"
             bot.answer_callback_query(call.id, f"Размер: {new_sz/10.0:g} см. Пересчитываю...")
         elif param == "stx":
-            mult = float(val_str)
-            new_sx = max(MIN_STRETCH, min(MAX_STRETCH, round(float(curr_layout.get("stretch_x", 1.0)) * mult, 4)))
+            mult = clamp_finite(val_str, 0.01, 100.0, 1.0)
+            cur_sx = clamp_finite(curr_layout.get("stretch_x"), MIN_STRETCH, MAX_STRETCH, 1.0)
+            new_sx = clamp_finite(round(cur_sx * mult, 4), MIN_STRETCH, MAX_STRETCH, 1.0)
             meta["stretch_x"] = new_sx
             meta["menu_tab"] = "stretch"
             storage_update_job(job_id, stretch_x=new_sx, menu_tab="stretch")
@@ -383,8 +386,9 @@ def handle_job_callback(call: CallbackQuery) -> None:
             action_desc = f"Ширина ×{new_sx:.3g}"
             bot.answer_callback_query(call.id, f"Масштаб ширины: ×{new_sx:.3g}. Пересчитываю...")
         elif param == "sty":
-            mult = float(val_str)
-            new_sy = max(MIN_STRETCH, min(MAX_STRETCH, round(float(curr_layout.get("stretch_y", 1.0)) * mult, 4)))
+            mult = clamp_finite(val_str, 0.01, 100.0, 1.0)
+            cur_sy = clamp_finite(curr_layout.get("stretch_y"), MIN_STRETCH, MAX_STRETCH, 1.0)
+            new_sy = clamp_finite(round(cur_sy * mult, 4), MIN_STRETCH, MAX_STRETCH, 1.0)
             meta["stretch_y"] = new_sy
             meta["menu_tab"] = "stretch"
             storage_update_job(job_id, stretch_y=new_sy, menu_tab="stretch")

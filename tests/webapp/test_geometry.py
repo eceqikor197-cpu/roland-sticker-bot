@@ -11,7 +11,7 @@ import pytest
 
 from bot.jobs import inspect_eps_stats
 from jpeg2eps import convert_image_to_plotter_eps
-from miniapp.geometry import JobParams, item_geometry
+from miniapp.geometry import MAX_SIZE_MM, MAX_STRETCH, JobParams, item_geometry
 from miniapp.source import prepare_source
 from pricing import calculate_nesting_and_price
 
@@ -25,6 +25,8 @@ PARAM_CASES = [
     {"size_mm": 80, "offset_mm": 1.5, "perf_cut_mode": "sheet_frame"},
     {"size_mm": 90, "offset_mm": 2.5, "stretch_x": 1.4, "stretch_y": 1.0},
     {"size_mm": 70, "offset_mm": 3.0, "stretch_x": 0.8, "stretch_y": 1.2},
+    {"size_mm": 2, "offset_mm": 2.5},
+    {"size_mm": 3000, "offset_mm": 2.5, "stretch_x": 1.0, "stretch_y": 2.0},
 ]
 
 
@@ -70,13 +72,27 @@ def test_source_is_cached_and_normalized(tmp_path: Path, sticker_png: Path) -> N
 
 def test_params_are_clamped() -> None:
     p = JobParams.from_dict(
-        {"size_mm": 99999, "offset_mm": -3, "stretch_x": 50, "perf_cut_mode": "laser", "nesting_qty": 0}
+        {"size_mm": 10_000_000, "offset_mm": -3, "stretch_x": 500, "perf_cut_mode": "laser", "nesting_qty": 0}
     )
-    assert p.size_mm == 1370.0
+    assert p.size_mm == MAX_SIZE_MM
     assert p.offset_mm == 0.0
-    assert p.stretch_x == 10.0
+    assert p.stretch_x == MAX_STRETCH
     assert p.perf_cut_mode == "none"
     assert p.nesting_qty == 1
+
+
+def test_large_sizes_are_allowed() -> None:
+    """Баннер в несколько метров и сильное растяжение больше не обрезаются до 1,37 м и 10×."""
+    p = JobParams.from_dict({"size_mm": 5000, "stretch_x": 20})
+    assert p.size_mm == 5000.0
+    assert p.stretch_x == 20.0
+
+
+def test_garbage_params_fall_back_to_defaults() -> None:
+    p = JobParams.from_dict({"size_mm": "nan", "stretch_x": "inf", "stretch_y": "abc"})
+    assert p.size_mm == 100.0
+    assert p.stretch_x == 1.0
+    assert p.stretch_y == 1.0
 
 
 def test_golden_is_up_to_date() -> None:

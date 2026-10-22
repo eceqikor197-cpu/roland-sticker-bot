@@ -12,10 +12,9 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any, Dict
 
-MIN_SIZE_MM = 5.0
-MAX_SIZE_MM = 1370.0
-MIN_STRETCH = 0.1
-MAX_STRETCH = 10.0
+from config import MAX_SIZE_MM, MAX_STRETCH, MIN_SIZE_MM, MIN_STRETCH
+
+__all__ = ["MAX_SIZE_MM", "MAX_STRETCH", "MIN_SIZE_MM", "MIN_STRETCH"]
 MAX_OFFSET_MM = 10.0
 MAX_NESTING_QTY = 500
 PERF_MODES = ("none", "sheet_frame", "die_cut")
@@ -25,6 +24,8 @@ ROLL_WIDTHS_MM = (600.0, 1000.0, 1370.0)
 EXTRA_PERF_MM = 3.5
 # Буфер растра при неравном растяжении, как в jpeg2eps.py
 STRETCH_RASTER_CAP_PX = 4500.0
+# Предел плотности пикселей для маленьких наклеек, как в jpeg2eps.py
+MAX_PX_PER_MM = 60.0
 
 
 @dataclass
@@ -50,9 +51,10 @@ class JobParams:
         def _f(key: str, default: float) -> float:
             val = data.get(key)
             try:
-                return float(val) if val is not None else default
+                v = float(val) if val is not None else default
             except (TypeError, ValueError):
                 return default
+            return v if math.isfinite(v) else default
 
         def _i(key: str, default: int) -> int:
             val = data.get(key)
@@ -116,6 +118,11 @@ def item_geometry(crop_w_px: int, crop_h_px: int, params: JobParams) -> Dict[str
             ry *= cap
         obj_w = max(32, int(round(ow * rx)))
         obj_h = max(32, int(round(oh * ry)))
+
+    density_cap = MAX_PX_PER_MM / (obj_w / max(1.0, target_w_mm))
+    if density_cap < 1.0:
+        obj_w = max(32, int(round(obj_w * density_cap)))
+        obj_h = max(32, int(round(obj_h * density_cap)))
 
     longest_obj_px = float(max(obj_w, obj_h))
     px_per_mm = obj_w / max(1.0, target_w_mm)

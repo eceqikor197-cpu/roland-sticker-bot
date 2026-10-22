@@ -4,7 +4,7 @@
 1. Проверку владельца во всех callback'ах job:* (пользователь B получает «⛔ Это не ваш макет», админ может всё).
 2. Режим «заявка» для отправки в Hot Folder обычными пользователями и подтверждение/отклонение админом (ALLOW_USER_HOT_FOLDER).
 3. Защиту PIL от декомпрессионных бомб (MAX_IMAGE_PIXELS, DecompressionBombError).
-4. Ограничения размера входного файла (MAX_UPLOAD_MB), габаритов макета (MAX_SIZE_MM) и растяжения (0.1–10).
+4. Ограничения размера входного файла (MAX_UPLOAD_MB), габаритов макета (MAX_SIZE_MM) и растяжения (MIN_STRETCH–MAX_STRETCH).
 5. Лимиты частоты (6 в минуту), одновременных конвертаций (1 на пользователя, глобальный семафор) и отображение «в очереди».
 6. Скрытие текста исключений от обычных пользователей («Не удалось обработать файл») и показ деталей админу.
 """
@@ -363,27 +363,56 @@ def test_max_upload_size_document(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_max_size_mm_clamped_on_text_input(monkeypatch: pytest.MonkeyPatch):
-    """Ввод гигантских размеров (например '2000 м' или '2000 мм') ограничивается MAX_SIZE_MM (1370 мм)."""
+    """Метровые размеры больше ширины рулона принимаются, а совсем гигантские ограничиваются MAX_SIZE_MM (100 м)."""
     mock_reply = MagicMock()
     monkeypatch.setattr(telegram_bot.bot, "reply_to", mock_reply)
 
-    # 1. Одиночный размер '2.5 м'
+    # 1. Одиночный размер '2.5 м' больше 1370 мм и принимается как есть
     msg = make_message(text="2.5 м", user_id=11111)
     handle_custom_size_text(msg)
+    assert telegram_bot.get_user_prefs(11111)["size_mm"] == 2500.0
 
-    prefs = telegram_bot.get_user_prefs(11111)
-    assert prefs["size_mm"] == MAX_SIZE_MM
-
-    # 2. Прямоугольный габарит '2x3 м'
+    # 2. Прямоугольный габарит '2x3 м' — длинная сторона 3 м
     msg2 = make_message(text="2x3 м", user_id=11111)
     handle_custom_size_text(msg2)
+    assert telegram_bot.get_user_prefs(11111)["size_mm"] == 3000.0
 
-    prefs2 = telegram_bot.get_user_prefs(11111)
-    assert prefs2["size_mm"] == MAX_SIZE_MM
+    # 3. Явно нереальный размер упирается в MAX_SIZE_MM
+    msg3 = make_message(text="2000 м", user_id=11111)
+    handle_custom_size_text(msg3)
+    assert telegram_bot.get_user_prefs(11111)["size_mm"] == MAX_SIZE_MM
+
+
+def test_zero_size_text_is_rejected(monkeypatch: pytest.MonkeyPatch):
+    """Ноль не считается размером: настройка не меняется."""
+    from bot.handlers_admin import parse_size_text
+
+    assert parse_size_text("0 см") == ()
+    assert parse_size_text("0x5 см") == ()
+    assert parse_size_text("-5 см") == ()
+    assert parse_size_text("abc") == ()
+    assert parse_size_text("1 мм") == (1.0,)
+
+    monkeypatch.setattr(telegram_bot.bot, "reply_to", MagicMock())
+    telegram_bot.update_user_prefs(11111, size_mm=80.0)
+    handle_custom_size_text(make_message(text="0 см", user_id=11111))
+    assert telegram_bot.get_user_prefs(11111)["size_mm"] == 80.0
+
+
+def test_clamp_finite_rejects_garbage():
+    """Не число, nan и бесконечность заменяются значением по умолчанию."""
+    from config import clamp_finite
+
+    assert clamp_finite("abc", 1.0, 10.0, 5.0) == 5.0
+    assert clamp_finite(None, 1.0, 10.0, 5.0) == 5.0
+    assert clamp_finite("nan", 1.0, 10.0, 5.0) == 5.0
+    assert clamp_finite("inf", 1.0, 10.0, 5.0) == 5.0
+    assert clamp_finite(-3, 1.0, 10.0, 5.0) == 1.0
+    assert clamp_finite("2.5", 1.0, 10.0, 5.0) == 2.5
 
 
 def test_stretch_limits(monkeypatch: pytest.MonkeyPatch):
-    """Коэффициенты растяжения ограничены диапазоном 0.1–10.0."""
+    """Коэффициенты растяжения ограничены диапазоном MIN_STRETCH–MAX_STRETCH."""
     create_dummy_job("stretch_job", user_id=11111)
     mock_answer = MagicMock()
     mock_send = MagicMock()
@@ -392,15 +421,15 @@ def test_stretch_limits(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(telegram_bot, "process_and_send_job", MagicMock())
 
     # Начальное значение 1.0, пытаемся многократно увеличивать
-    telegram_bot.update_user_prefs(11111, stretch_x=9.5, stretch_y=0.15)
+    telegram_bot.update_user_prefs(11111, stretch_x=MAX_STRETCH * 0.95, stretch_y=MIN_STRETCH * 1.5)
 
-    # Увеличение ширины выше 10.0
+    # Увеличение ширины выше MAX_STRETCH
     call_inc = make_callback_query("job:stretch_job:stx:1.25", user_id=11111)
     handle_job_callback(call_inc)
     prefs = telegram_bot.get_user_prefs(11111)
     assert prefs["stretch_x"] <= MAX_STRETCH
 
-    # Уменьшение высоты ниже 0.1
+    # Уменьшение высоты ниже MIN_STRETCH
     call_dec = make_callback_query("job:stretch_job:sty:0.5", user_id=11111)
     handle_job_callback(call_dec)
     prefs = telegram_bot.get_user_prefs(11111)

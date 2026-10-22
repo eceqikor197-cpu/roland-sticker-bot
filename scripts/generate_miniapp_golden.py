@@ -34,6 +34,9 @@ CASES = [
     (640, 640, {"size_mm": 1370, "offset_mm": 2.5}),
     (640, 480, {"size_mm": 5, "offset_mm": 0.5}),
     (900, 700, {"size_mm": 85, "stretch_x": 0.75, "stretch_y": 1.25, "offset_mm": 3}),
+    (512, 96, {"size_mm": 5000, "offset_mm": 2.5}),
+    (4000, 3000, {"size_mm": 1, "offset_mm": 2.5}),
+    (4000, 3000, {"size_mm": 10, "stretch_x": 2.0, "stretch_y": 1.0, "perf_cut_mode": "die_cut"}),
 ]
 
 ROLL_CASES = [(10, 1370.0), (25, 1370.0), (100, 600.0), (3, 1000.0)]

@@ -9,8 +9,10 @@ const $ = (id) => document.getElementById(id);
 // initData от Telegram; вне Telegram можно передать в #tgWebAppData=... (для отладки)
 const initData = tg?.initData || new URLSearchParams(location.hash.slice(1)).get('tgWebAppData') || '';
 
-const SIZE_MIN = 5;
-const SIZE_MAX = 1370;
+// Ползунок охватывает ходовые размеры; поля Ш/В принимают всё, что разрешает сервер (limits в /config)
+const SLIDER_MIN = 5;
+const SLIDER_MAX = 1370;
+const limit = (key, fallback) => state.config?.limits?.[key] || fallback;
 const SIZE_CHIPS_MM = [30, 50, 70, 100, 150, 210, 297];
 const OFFSET_CHIPS = [0, 1.5, 2.5, 4];
 const QTY_CHIPS = [10, 25, 50, 100];
@@ -92,10 +94,10 @@ function toast(text, ms = 3500) {
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
-// Ползунок размера логарифмический: 5 мм … 1370 мм
-const sizeToRange = (mm) => Math.round((Math.log(mm / SIZE_MIN) / Math.log(SIZE_MAX / SIZE_MIN)) * 1000);
+// Ползунок размера логарифмический: 5 мм … 1370 мм (за краями просто упирается)
+const sizeToRange = (mm) => clamp(Math.round((Math.log(mm / SLIDER_MIN) / Math.log(SLIDER_MAX / SLIDER_MIN)) * 1000), 0, 1000);
 const rangeToSize = (v) => {
-  const mm = SIZE_MIN * (SIZE_MAX / SIZE_MIN) ** (v / 1000);
+  const mm = SLIDER_MIN * (SLIDER_MAX / SLIDER_MIN) ** (v / 1000);
   return mm < 100 ? Math.round(mm * 2) / 2 : Math.round(mm);
 };
 
@@ -254,16 +256,17 @@ function setView(view) {
 // Ширина/высота рисунка в мм. С замком меняется размер, без замка — растяжение одной оси.
 function applyWH(axis, valueMm) {
   const st = currentSticker();
-  if (!st || !(valueMm > 0)) return;
+  if (!st || !(valueMm > 0) || !Number.isFinite(valueMm)) return;
   const p = state.params;
   const cur = axis === 'w' ? st.geo.art_w_mm : st.geo.art_h_mm;
   const ratio = valueMm / cur;
   if (state.lock) {
-    setParams({ size_mm: clamp(p.size_mm * ratio, SIZE_MIN, SIZE_MAX) });
-  } else if (axis === 'w') {
-    setParams({ stretch_x: clamp(p.stretch_x * ratio, 0.1, 10) });
+    const [lo, hi] = limit('size_mm', [1, 100000]);
+    setParams({ size_mm: clamp(p.size_mm * ratio, lo, hi) });
   } else {
-    setParams({ stretch_y: clamp(p.stretch_y * ratio, 0.1, 10) });
+    const [lo, hi] = limit('stretch', [0.05, 100]);
+    const key = axis === 'w' ? 'stretch_x' : 'stretch_y';
+    setParams({ [key]: clamp(p[key] * ratio, lo, hi) });
   }
 }
 

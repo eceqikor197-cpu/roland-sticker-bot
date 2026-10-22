@@ -35,8 +35,13 @@ from config import (
     JOB_RETENTION_HOURS,
     JOBS_DIR,
     LIVE_SPY_DEFAULT,
+    MAX_SIZE_MM,
+    MAX_STRETCH,
+    MIN_SIZE_MM,
+    MIN_STRETCH,
     STORAGE_DB_PATH,
     WORK_DIR,
+    clamp_finite,
 )
 from jpeg2eps import (
     MM_TO_PT,
@@ -71,10 +76,6 @@ from web.pages import PERF_MODE_LABELS, format_ts
 
 logger = logging.getLogger(__name__)
 
-MIN_SIZE_MM = 5.0
-MAX_SIZE_MM = 1370.0
-MIN_STRETCH = 0.1
-MAX_STRETCH = 10.0
 
 
 def _get_bot() -> Any:
@@ -448,14 +449,14 @@ def process_and_send_job(
     prefs = storage_get_user_prefs(user_id)
 
     offset_mm = float(meta.get("offset_mm") if meta.get("offset_mm") is not None else prefs["offset_mm"])
-    size_mm = max(MIN_SIZE_MM, min(MAX_SIZE_MM, float(meta.get("size_mm") if meta.get("size_mm") is not None else prefs["size_mm"])))
+    size_mm = clamp_finite(meta.get("size_mm") if meta.get("size_mm") is not None else prefs["size_mm"], MIN_SIZE_MM, MAX_SIZE_MM, 100.0)
     keep_bg = bool(meta.get("keep_background") if meta.get("keep_background") is not None else prefs["keep_background"])
     perf_mode = str(meta.get("perf_cut_mode") if meta.get("perf_cut_mode") is not None else prefs.get("perf_cut_mode", "none"))
     perf_passes = int(meta.get("perf_cut_passes") if meta.get("perf_cut_passes") is not None else prefs.get("perf_cut_passes", 2))
     nesting_qty = int(meta.get("nesting_qty") if meta.get("nesting_qty") is not None else prefs.get("nesting_qty", 1))
     roll_width_mm = float(meta.get("roll_width_mm") if meta.get("roll_width_mm") is not None else prefs.get("roll_width_mm", 1370.0))
-    stretch_x = max(MIN_STRETCH, min(MAX_STRETCH, float(meta.get("stretch_x") if meta.get("stretch_x") is not None else prefs.get("stretch_x", 1.0))))
-    stretch_y = max(MIN_STRETCH, min(MAX_STRETCH, float(meta.get("stretch_y") if meta.get("stretch_y") is not None else prefs.get("stretch_y", 1.0))))
+    stretch_x = clamp_finite(meta.get("stretch_x") if meta.get("stretch_x") is not None else prefs.get("stretch_x", 1.0), MIN_STRETCH, MAX_STRETCH, 1.0)
+    stretch_y = clamp_finite(meta.get("stretch_y") if meta.get("stretch_y") is not None else prefs.get("stretch_y", 1.0), MIN_STRETCH, MAX_STRETCH, 1.0)
     fit_a4_sheet = bool(meta.get("fit_a4_sheet") if meta.get("fit_a4_sheet") is not None else prefs.get("fit_a4_sheet", False))
 
     eps_filename = f"{orig_stem}.eps"
